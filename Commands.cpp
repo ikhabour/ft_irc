@@ -219,6 +219,11 @@ void    Server::Leave(int fd, std::string cmd)
         Channel* tmp = Channel_exists(ch_name);
         if (tmp)
         {
+            if (ch_name != client->getChannel())
+            {
+                sendMsg(fd, "You are not connected to this channel\n");
+                return ;
+            }
             if (client->getOpStatus())
                 tmp->removeOperator(client->getNickname());
             client->setJoinTime(0);
@@ -246,7 +251,7 @@ void    Channel::assignNextOp()
     if (getVecSize() == 0 || admins.size() >= 1)
         return ;
     int lowestTime = std::numeric_limits<int>::max();
-    Client* minTimeClient = nullptr;
+    Client* minTimeClient = NULL;
     std::vector<Client*>::iterator it;
     for (it = _clients.begin(); it != _clients.end(); ++it) 
     {
@@ -269,4 +274,132 @@ void    Channel::PrintOperators()
     std::vector<Client*>::iterator it;
     for (it = admins.begin(); it != admins.end(); it++)
         std::cout<<"User : " << (*it)->getNickname() << " is an Operator"<<std::endl;
+}
+
+
+
+void    Server::msg(int fd, std::string cmd)
+{
+    Client *client = getClient(fd);
+    if (!client->getChStatus())
+    {
+        sendMsg(fd, "You are not connected to a channel\n");
+        return ;
+    }
+    cmd = cmd.substr(3);
+    size_t pos = cmd.find_first_not_of(" \t\v");
+    if (pos < cmd.size())
+        cmd = cmd.substr(pos);
+    if (pos == std::string::npos)
+    {
+        std::cerr<<"Invalid command received\n";
+        sendMsg(client->getFd(), "Wrong parameters\nUsage : msg <message>\n");
+        return ;
+    }
+    cmd = removeExtraSpaces(cmd);
+    Channel* tmp = Channel_exists(client->getChannel());
+    if (tmp)
+        tmp->chsendMsg(cmd);
+}
+
+void    Server::privmsg(int fd, std::string cmd)
+{
+    Client *client = getClient(fd);
+    cmd = cmd.substr(7);
+    size_t pos = cmd.find_first_not_of(" \t\v");
+    if (pos < cmd.size())
+        cmd = cmd.substr(pos);
+    if (pos == std::string::npos)
+    {
+        std::cerr<<"Invalid command received\n";
+        sendMsg(fd, "Wrong parameters\nUsage : privmsg <nickname> <message>\n");
+        return ;
+    }
+    cmd = removeExtraSpaces(cmd);
+    std::string nickname;
+    std::string msg;
+    pos = cmd.find(" ");
+    if (pos != std::string::npos)
+    {
+        nickname = cmd.substr(0, pos);
+        cmd = cmd.substr(pos);
+        pos = cmd.find_first_not_of(" ");
+        if (pos != std::string::npos)
+            msg = cmd.substr(pos);
+    }
+    else
+        nickname = cmd;
+    if (msg.empty())
+    {
+        sendMsg(fd, "Wrong parameters\nUsage : privmsg <nickname> <message>\n");
+        return ;
+    }
+    Client* to_msg = srvFindClient(nickname);
+    if (to_msg)
+    {
+        sendMsg(fd, "Message sent TO @" + nickname + '\n');
+        sendMsg(to_msg->getFd(), "Message FROM @" + client->getNickname() + " : " + msg + '\n');
+        return ;
+    }
+    else
+    {
+        sendMsg(fd, "This user is not connected to the server\n");
+        return ;
+    }
+}
+
+void    Server::topic(int fd, std::string cmd)
+{
+    Client *client = getClient(fd);
+    cmd = cmd.substr(5);
+    size_t pos = cmd.find_first_not_of(" \t\v");
+    if (pos < cmd.size())
+        cmd = cmd.substr(pos);
+    if (pos == std::string::npos)
+    {
+        std::cerr<<"Invalid command received\n";
+        sendMsg(fd, "Wrong parameters\nUsage : privmsg <nickname> <message>\n");
+        return ;
+    }
+    cmd = removeExtraSpaces(cmd);
+    std::string chname;
+    std::string topic;
+    pos = cmd.find(" ");
+    if (pos != std::string::npos)
+    {
+        chname = cmd.substr(0, pos);
+        cmd = cmd.substr(pos);
+        pos = cmd.find_first_not_of(" ");
+        if (pos != std::string::npos)
+            topic = cmd.substr(pos);
+    }
+    else
+        chname = cmd;
+    Channel *tmp = Channel_exists(chname);
+    if (tmp)
+    {
+        if (topic.empty() && tmp->getTopic() == "no topic")
+        {
+            sendMsg(fd, "Channel has no topic yet\n");
+            return ;
+        }
+        else if (!topic.empty())
+        {
+            tmp->setTopic(topic);
+            sendMsg(fd, "Topic updated\n");
+            return ;
+        }
+        else
+        {
+            sendMsg(fd, "Channel Topic : " + tmp->getTopic() + '\n');
+            return ;
+        }
+    }
+    else
+    {
+        sendMsg(fd, "This channel does not exist\n");
+        return ;
+    }
+
+
 }

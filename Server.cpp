@@ -97,6 +97,12 @@ void Server::parse_cmd(int fd, std::string cmd)
             Join(fd, cmd);
         if (vec.size() && (vec[0] == "LEAVE" || vec[0] == "leave"))
             Leave(fd, cmd);
+        if (vec.size() && (vec[0] == "MSG" || vec[0] == "msg"))
+            msg(fd, cmd);
+        if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
+            privmsg(fd, cmd);
+        if (vec.size() && (vec[0] == "TOPIC" || vec[0] == "topic"))
+            topic(fd, cmd);
         if (vec.size() && (vec[0] == "KICK" || vec[0] == "kick"))
             Kick(fd, cmd);
         if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))

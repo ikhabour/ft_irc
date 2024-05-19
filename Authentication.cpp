@@ -125,7 +125,7 @@ void Server::Username(int fd, std::string cmd)
 
 bool Server::registration(int fd)
 {
-	if (!getClient(fd)->getNickname().empty() || !getClient(fd)->getUsername().empty())
+	if (!getClient(fd)->getNickname().empty() && !getClient(fd)->getUsername().empty())
 		return (true);
 	return (false);
 }

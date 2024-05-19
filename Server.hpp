@@ -76,8 +76,16 @@ class Server
 
         void    Join(int fd, std::string cmd);
         void    Leave(int fd, std::string cmd);
+        void    msg(int fd, std::string cmd);
+        void    privmsg(int fd, std::string cmd);
+        void    topic(int fd, std::string cmd);
+
+        /*      Operator Commands       */
+
+
         void    Kick(int fd, std::string cmd);
         void    Invite(int fd, std::string cmd);
+
 
         /*      Utils       */
         Channel* Channel_exists(std::string chname);

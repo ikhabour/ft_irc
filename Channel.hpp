@@ -52,6 +52,7 @@ class Channel
         void    add_client(Client* client);
         void    remove_client(Client* client);
         void    assignNextOp();
+        void    chsendMsg(std::string msg);
 
         void    PrintOperators();
 };

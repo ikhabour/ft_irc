@@ -115,3 +115,10 @@ size_t Channel::getOpVecSize()
 {
     return this->admins.size();
 }
+
+void    Channel::chsendMsg(std::string msg)
+{
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+        sendMsg((*it)->getFd(), (*it)->getNickname() + " : " + msg + '\n');
+}
