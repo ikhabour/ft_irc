@@ -1,0 +1,23 @@
+NAME= ircserv
+FLAGS= -Wall -Wextra -Werror -std=c++98 #-fsanitize=address -g3
+
+SRC = Server.cpp Client.cpp Authentication.cpp Channel.cpp Commands.cpp opCommands.cpp main.cpp
+
+OBJ = $(SRC:.cpp=.o)
+
+all: $(NAME)
+
+$(NAME): $(OBJ)
+	@g++ $(FLAGS) $(OBJ) -o $(NAME)
+
+%.o: %.cpp
+	@g++ $(FLAGS) -c $< -o $@
+
+clean:
+	@rm -f $(OBJ)
+
+fclean: clean
+	@rm -f $(NAME)
+
+re: fclean all
+
