@@ -32,6 +32,10 @@
 #include <unistd.h>
 #include <poll.h>
 #include <vector>
+#include <csignal>
+#include <iterator>
+#include <limits>
+#include <cstdlib>
 #include "Client.hpp"
 #include "Channel.hpp"
 
@@ -75,16 +79,16 @@ class Server
 
 
         void    Join(int fd, std::string cmd);
-        void    Leave(int fd, std::string cmd);
-        void    msg(int fd, std::string cmd);
+        // void    Leave(int fd, std::string cmd);
+        // void    msg(int fd, std::string cmd);
         void    privmsg(int fd, std::string cmd);
-        void    topic(int fd, std::string cmd);
+        // void    topic(int fd, std::string cmd);
 
         /*      Operator Commands       */
 
 
-        void    Kick(int fd, std::string cmd);
-        void    Invite(int fd, std::string cmd);
+        // void    Kick(int fd, std::string cmd);
+        // void    Invite(int fd, std::string cmd);
 
 
         /*      Utils       */

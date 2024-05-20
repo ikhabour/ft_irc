@@ -19,7 +19,7 @@ Server::Server(int port, std::string pass) : port(port), password(pass)
     if (port < 1024 || port > 65535)
     {
         std::cerr << "Invalid port\n";
-        exit(1);
+        _exit(1);
     }
 }
 
@@ -79,6 +79,7 @@ void sendMsg(int fd, std::string msg)
 
 void Server::parse_cmd(int fd, std::string cmd)
 {
+    static int flag = 0;
     if (cmd.empty())
         return;
     std::vector<std::string> vec = split_cmd(cmd);
@@ -91,22 +92,24 @@ void Server::parse_cmd(int fd, std::string cmd)
         Nickname(fd, cmd);
     else if (vec.size() && (vec[0] == "USER" || vec[0] == "user"))
         Username(fd, cmd);
+    else if (vec.size() && (vec[0].compare(0, 6, "CAP LS")) && !flag)
+        flag = 1;
     else if (registration(fd) == true)
     {
         if (vec.size() && (vec[0] == "JOIN" || vec[0] == "join"))
             Join(fd, cmd);
-        if (vec.size() && (vec[0] == "LEAVE" || vec[0] == "leave"))
-            Leave(fd, cmd);
-        if (vec.size() && (vec[0] == "MSG" || vec[0] == "msg"))
-            msg(fd, cmd);
+        // if (vec.size() && (vec[0] == "LEAVE" || vec[0] == "leave"))
+            // Leave(fd, cmd);
+        // if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
+        //     msg(fd, cmd);
         if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
             privmsg(fd, cmd);
-        if (vec.size() && (vec[0] == "TOPIC" || vec[0] == "topic"))
-            topic(fd, cmd);
-        if (vec.size() && (vec[0] == "KICK" || vec[0] == "kick"))
-            Kick(fd, cmd);
-        if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))
-            Invite(fd, cmd);
+        // if (vec.size() && (vec[0] == "TOPIC" || vec[0] == "topic"))
+        //     topic(fd, cmd);
+        // if (vec.size() && (vec[0] == "KICK" || vec[0] == "kick"))
+        //     Kick(fd, cmd);
+        // if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))
+        //     Invite(fd, cmd);
     }
     else
         sendMsg(fd, "Invalid command\n");
@@ -168,30 +171,31 @@ void Server::receiveData(int fd)
     if (bytesReceived <= 0)
     {
         std::cout << RED << "Client disconnected: " << fd << WHI << std::endl;
-        if (client->getChStatus())
-        {
-            std::string chname = client->getChannel();
-            Channel *tmp = Channel_exists(chname);
-            if (tmp)
-            {
-                if (client->getOpStatus())
-                    tmp->removeOperator(client->getNickname());
-                client->setJoinTime(0);
-                tmp->assignNextOp();
-                client->emptyChannel();
-                client->setChStatus(false);
-                tmp->remove_client(client);
-                sendMsg(client->getFd(), "You have left the channel\n");
-                ch_broadcast(client->getNickname(), client->getFd(), chname, " left your channel\n");
-                if (tmp->getVecSize() == 0)
-                    deleteChannel(tmp->getName());
-            }
-        }
+        // if (client->getChStatus())
+        // {
+        //     std::string chname = client->getChannel();
+        //     Channel *tmp = Channel_exists(chname);
+        //     if (tmp)
+        //     {
+        //         if (client->getOpStatus())
+        //             tmp->removeOperator(client->getNickname());
+        //         client->setJoinTime(0);
+        //         tmp->assignNextOp();
+        //         client->emptyChannel();
+        //         client->setChStatus(false);
+        //         tmp->remove_client(client);
+        //         sendMsg(client->getFd(), "You have left the channel\n");
+        //         ch_broadcast(client->getNickname(), client->getFd(), chname, " left your channel\n");
+        //         if (tmp->getVecSize() == 0)
+        //             deleteChannel(tmp->getName());
+        //     }
+        // }
         ClearClients(fd);
         close(fd);
     } 
     else 
     {
+        std::cout<<"data : "<<buffer<<std::endl;
         client->setBuffer(buffer);
         if (client->getBuffer().find_first_of("\n") == std::string::npos)
             return;

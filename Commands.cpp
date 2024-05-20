@@ -23,8 +23,8 @@ std::string removeExtraSpaces(const std::string& input)
 
     // Remove trailing space if present
     result = output.str();
-    if (!result.empty() && result.back() == ' ') {
-        result.pop_back();
+    if (!result.empty() && result[result.size() - 1] == ' ') {
+        result.erase(result.begin() + (result.size() - 1));
     }
 
     return result;
@@ -151,7 +151,7 @@ void    Server::Join(int fd, std::string cmd)
     if (!Channel_exists(ch_name)) // if the channel doesn't exist create one and add the client to it
     {
         Channel* tmp = makeChannel(client, ch_name, pw);
-        sendMsg(fd, ch_name + " created successfully\n");
+        sendMsg(fd, ":" + client->getNickname() + " JOIN " + ch_name + "\r\n");
         tmp->add_client(client);
         client->setChannel(ch_name);
         client->setChStatus(true);
@@ -174,6 +174,7 @@ void    Server::Join(int fd, std::string cmd)
             client->setChStatus(true);
             if (!client->getJoinTime()) // first time to join
                 client->setJoinTime(clock());
+            sendMsg(fd, ":" + client->getNickname() + " JOIN " + ch_name + "\r\n");
             sendMsg(fd, client->getNickname() + " joined " + ch_name + " successfully\n");
             ch_broadcast(client->getNickname(), client->getFd(), ch_name, " joined your channel\n");
         }
@@ -286,7 +287,7 @@ void    Server::msg(int fd, std::string cmd)
         sendMsg(fd, "You are not connected to a channel\n");
         return ;
     }
-    cmd = cmd.substr(3);
+    cmd = cmd.substr(7);
     size_t pos = cmd.find_first_not_of(" \t\v");
     if (pos < cmd.size())
         cmd = cmd.substr(pos);
@@ -297,10 +298,18 @@ void    Server::msg(int fd, std::string cmd)
         return ;
     }
     cmd = removeExtraSpaces(cmd);
-    Channel* tmp = Channel_exists(client->getChannel());
-    if (tmp)
-        tmp->chsendMsg(cmd);
+    sendMsg(fd, ":" + client->getNickname() + " PRIVMSG " + "#channel :" + cmd);
+    // Channel* tmp = Channel_exists(client->getChannel());
+    // if (tmp)
+    //     tmp->chsendMsg(cmd);
 }
+
+
+// void    Server::privmsg(int fd, std::string cmd)
+// {
+//     (void)fd;
+//     std::cout<<"cmd : ("<<cmd + ')'<<std::endl;
+// }
 
 void    Server::privmsg(int fd, std::string cmd)
 {
@@ -335,10 +344,12 @@ void    Server::privmsg(int fd, std::string cmd)
         return ;
     }
     Client* to_msg = srvFindClient(nickname);
+    // command = "PRIVMSG " + target + " :" + message + "\r\n";
+    // send(sockfd, command.c_str(), command.size(), 0);
     if (to_msg)
     {
         sendMsg(fd, "Message sent TO @" + nickname + '\n');
-        sendMsg(to_msg->getFd(), "Message FROM @" + client->getNickname() + " : " + msg + '\n');
+        sendMsg(to_msg->getFd(),":" + client->getNickname() + " PRIVMSG " + to_msg->getNickname() + " :" + msg + "\r\n");
         return ;
     }
     else
@@ -351,6 +362,7 @@ void    Server::privmsg(int fd, std::string cmd)
 void    Server::topic(int fd, std::string cmd)
 {
     Client *client = getClient(fd);
+    (void)client;
     cmd = cmd.substr(5);
     size_t pos = cmd.find_first_not_of(" \t\v");
     if (pos < cmd.size())
