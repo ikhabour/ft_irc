@@ -39,6 +39,7 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 
+
 class Channel;
 
 class Client;
@@ -103,5 +104,6 @@ class Server
 
 void sendMsg(int fd, std::string msg);
 std::string removeExtraSpaces(const std::string& input);
+
 
 #endif

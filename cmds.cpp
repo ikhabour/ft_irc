@@ -47,7 +47,6 @@ void    Server::deleteChannel(std::string chname)
 
 void    Server::ch_broadcast(std::string user_nick, int excep, std::string chname, std::string msg)
 {
-    // sendMsg(fd, ":" + client->getNickname() + " PRIVMSG " + chname + " :joined your channel\r\n");
     for (std::vector<Client*>::iterator it = clients.begin(); it != clients.end(); it++)
     {
         Client *tmp = *it;
@@ -101,6 +100,11 @@ void    Server::Join(int fd, std::string cmd)
     else
     {
         Channel *tmp = Channel_exists(chname);
+        if (!(tmp->getPass().empty()) && pw != tmp->getPass())
+        {
+            sendMsg(fd, "Wrong Password\n");
+            return;
+        }
         tmp->add_client(client);
         client->setChStatus(true);
         client->setChannel(chname);
@@ -119,17 +123,46 @@ bool    only_spaces(std::string str)
     return true;
 }
 
+Client* Server::srvFindClient(std::string nickname)
+{
+    std::vector<Client*>::iterator it;
+    for (it = clients.begin(); it != clients.end(); it++)
+    {
+        if ((*it)->getNickname() == nickname)
+            return *it;
+    }
+    return NULL;
+}
+
+std::vector<std::string> split_words(std::string& cmd)
+{
+    std::vector<std::string> vec;
+    size_t pos = cmd.find(" ");
+    if (pos != std::string::npos)
+    {
+        vec.push_back(cmd.substr(0, pos));
+        cmd = cmd.substr(pos);
+        pos = cmd.find_first_not_of(" ");
+        if (pos != std::string::npos)
+        {
+            cmd = cmd.substr(pos);
+            vec.push_back(cmd);
+        }
+    }
+    else
+        vec.push_back(cmd);
+    return vec;
+}
+
 void    Server::privmsg(int fd, std::string cmd)
 {
     Client *client = getClient(fd);
-    (void)client;
 
     std::string chname;
     std::string user;
     std::string msg;
 
     cmd = cmd.substr(7);
-    size_t pos;
     std::cout<<"cmd : ("<<cmd + ')'<<std::endl;
     if (cmd.empty() || only_spaces(cmd))
     {
@@ -137,23 +170,65 @@ void    Server::privmsg(int fd, std::string cmd)
         return ;
     }
     cmd = cmd.substr(1);
-    if (cmd[0] == '#' || cmd[0] == '&')
+    std::vector<std::string> cmds = split_words(cmd);
+    for (size_t i = 0; i < cmds.size(); i++)
+        std::cout<<"elm : ("<<cmds[i] + ')'<<std::endl;
+    std::cout<<"vec size : "<<cmds.size()<<std::endl;
+    if (cmds.size() < 2 || (only_spaces(cmds[0]) || only_spaces(cmds[1])))
     {
-        pos = cmd.find(" ");
-        if (pos != std::string::npos)
+        sendMsg(fd, "Usage : /privmsg <nickname> <message>\n");
+        return ;
+    }
+    if (cmds[0][0] == '#' || cmds[0][0] == '&')
+        chname = cmds[0];
+    else
+        user = cmds[0];
+    msg = cmds[1];
+    if (!chname.empty())
+    {
+        if (msg[0] == ':')
+            msg.erase(msg.begin());
+        ch_broadcast(client->getNickname(), fd, chname, msg);
+    }
+    else if (!user.empty())
+    {
+        if (msg.empty())
         {
-            chname = cmd.substr(0, pos);
-            cmd = cmd.substr(pos);
-            pos = cmd.find_first_not_of(" ");
-            if (pos != std::string::npos)
-            {
-                
-            }
+            sendMsg(fd, "Usage : /privmsg <nickname> <message>\n");
+            return ;
+        }
+        if (msg[0] == ':')
+            msg.erase(msg.begin());
+        Client *to_msg = srvFindClient(user);
+        if (to_msg)
+        {
+            sendMsg(to_msg->getFd(), ":" + client->getNickname() + " PRIVMSG " + to_msg->getNickname() + " :" + msg + "\r\n");
+            return ;
+        }
+        else
+        {
+            sendMsg(fd, "This user is not connected to the server\n");
+            return ;
         }
     }
-    std::cout<<"cmd  2: ("<<cmd + ')'<<std::endl;
-    // else // priv msg executed by using /privmsg
-    // {
-    //     pos = cmd
-    // }
+
+//     if (cmd[0] == '#' || cmd[0] == '&')
+//     {
+//         pos = cmd.find(" ");
+//         if (pos != std::string::npos)
+//         {
+//             chname = cmd.substr(0, pos);
+//             cmd = cmd.substr(pos);
+//             pos = cmd.find_first_not_of(" ");
+//             if (pos != std::string::npos)
+//             {
+                
+//             }
+//         }
+//     }
+//     std::cout<<"cmd  2: ("<<cmd + ')'<<std::endl;
+//     // else // priv msg executed by using /privmsg
+//     // {
+//     //     pos = cmd
+//     // }
 }
