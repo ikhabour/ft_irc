@@ -80,7 +80,7 @@ class Server
 
 
         void    Join(int fd, std::string cmd);
-        // void    Leave(int fd, std::string cmd);
+        void    Leave(int fd, std::string cmd);
         // void    msg(int fd, std::string cmd);
         void    privmsg(int fd, std::string cmd);
         // void    topic(int fd, std::string cmd);

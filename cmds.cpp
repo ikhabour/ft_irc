@@ -163,7 +163,6 @@ void    Server::privmsg(int fd, std::string cmd)
     std::string msg;
 
     cmd = cmd.substr(7);
-    std::cout<<"cmd : ("<<cmd + ')'<<std::endl;
     if (cmd.empty() || only_spaces(cmd))
     {
         sendMsg(fd, "Usage : /privmsg <nickname> <message>\n");
@@ -171,9 +170,6 @@ void    Server::privmsg(int fd, std::string cmd)
     }
     cmd = cmd.substr(1);
     std::vector<std::string> cmds = split_words(cmd);
-    for (size_t i = 0; i < cmds.size(); i++)
-        std::cout<<"elm : ("<<cmds[i] + ')'<<std::endl;
-    std::cout<<"vec size : "<<cmds.size()<<std::endl;
     if (cmds.size() < 2 || (only_spaces(cmds[0]) || only_spaces(cmds[1])))
     {
         sendMsg(fd, "Usage : /privmsg <nickname> <message>\n");
@@ -211,24 +207,65 @@ void    Server::privmsg(int fd, std::string cmd)
             return ;
         }
     }
+}
 
-//     if (cmd[0] == '#' || cmd[0] == '&')
-//     {
-//         pos = cmd.find(" ");
-//         if (pos != std::string::npos)
-//         {
-//             chname = cmd.substr(0, pos);
-//             cmd = cmd.substr(pos);
-//             pos = cmd.find_first_not_of(" ");
-//             if (pos != std::string::npos)
-//             {
-                
-//             }
-//         }
-//     }
-//     std::cout<<"cmd  2: ("<<cmd + ')'<<std::endl;
-//     // else // priv msg executed by using /privmsg
-//     // {
-//     //     pos = cmd
-//     // }
+void    Channel::assignNextOp()
+{
+
+    if (getVecSize() == 0 || admins.size() >= 1)
+        return ;
+    int lowestTime = std::numeric_limits<int>::max();
+    Client* minTimeClient = NULL;
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); ++it) 
+    {
+        if ((*it)->getJoinTime())
+        {
+            int clientTime = (*it)->getJoinTime();
+            if (clientTime < lowestTime)
+            {
+                lowestTime = clientTime;
+                minTimeClient = *it;
+            }
+        }
+    }
+    if (minTimeClient)
+        setOperator(minTimeClient);
+}
+
+void    Server::Leave(int fd, std::string cmd)
+{
+    Client* client = getClient(fd);
+    (void)client;
+    cmd = cmd.substr(5);
+    std::vector<std::string> cmds = split_words(cmd);
+    std::string chname;
+    std::string msg;
+    for (size_t i = 0; i < cmds.size(); i++)
+        std::cout<<"elm : ("<<cmds[i] + ')'<<std::endl;
+    chname = cmds[0];
+    msg = cmds[1];
+    Channel *tmp = Channel_exists(chname);
+    if (tmp)
+    {
+        if (client->getOpStatus())
+            tmp->removeOperator(client->getNickname());
+        client->setChStatus(false);
+        client->emptyChannel();
+        client->setJoinTime(0);
+        tmp->assignNextOp();
+        tmp->remove_client(client);
+        if (only_spaces(msg))
+            msg = "Leaving";
+        if (msg[0] == ':')
+            msg.erase(msg.begin());
+        sendMsg(fd, ":" + client->getNickname() + " PART " + chname + " :" + msg + "\r\n");
+        ch_broadcast(client->getNickname(), fd, chname, "left your channel");
+        return ;
+    }
+    else
+    {
+        sendMsg(fd, "This channel does not exists\n");
+        return ;
+    }
 }

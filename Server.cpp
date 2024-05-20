@@ -96,10 +96,10 @@ void Server::parse_cmd(int fd, std::string cmd)
         flag = 1;
     else if (registration(fd) == true)
     {
-        if (vec.size() && (vec[0] == "JOIN" || vec[0] == "join"))
+        if (vec.size() && vec[0] == "JOIN")
             Join(fd, cmd);
-        // if (vec.size() && (vec[0] == "LEAVE" || vec[0] == "leave"))
-            // Leave(fd, cmd);
+        if (vec.size() && vec[0] == "PART")
+            Leave(fd, cmd);
         // if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
         //     msg(fd, cmd);
         if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
