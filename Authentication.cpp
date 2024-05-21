@@ -99,27 +99,16 @@ void Server::Username(int fd, std::string cmd)
 {
 	Client *client = getClient(fd);
 	cmd = cmd.substr(5);
-	size_t pos = cmd.find_first_not_of(" \t\v");
-	if (pos < cmd.size())
-		cmd = cmd.substr(pos);
-	if (pos == std::string::npos)
-	{
-		std::cerr << "Invalid command received\n";
-		return;
-	}
-	else if (!client->getLog())
+	std::vector<std::string> cmds = split_cmd(cmd);
+	if (!client->getLog())
 	{
 		std::cerr << "Client not logged in\n";
 		return;
 	}
-	else if (cmd[0] == ':')
-	{
-		client->setUsername(cmd);
-		std::cout << GRE << "Username set successfully to: " << cmd << WHI << std::endl;
-	}
 	else
 	{
-		sendMsg(fd, "Invalid user, the username should start with ':'\n");
+		client->setUsername(cmds[0]);
+		std::cout << GRE << "Username set successfully to: " << cmds[0] << WHI << std::endl;
 	}
 }
 

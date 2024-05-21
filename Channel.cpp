@@ -1,7 +1,7 @@
 #include "Channel.hpp"
 
 
-Channel::Channel(std::string& chname, std::string& key) : _name(chname), _password(key), _topic("no topic"), _i(false), _t(false), _l(0)
+Channel::Channel(std::string& chname, std::string& key) : _name(chname), _password(key), _topic("No topic is set"), _i(false), _t(false), _l(0)
 {}
 
 void    Channel::setName(std::string& Name)
@@ -62,6 +62,9 @@ bool Channel::getTopicStatus()
 void    Channel::setOperator(Client* client)
 {
     client->setOpStatus(this->getName(), true);
+    // :nickname!username@hostname MODE #channelname +o targetnickname
+    std::string msg = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost" + " MODE " + this->getName() + " +o " + client->getNickname() +"\r\n";
+    sendMsg(client->getFd(), msg);
     admins.push_back(client);
 }
 

@@ -46,7 +46,7 @@ void Server::SocketMaker()
     if (fcntl(srvSocketFd, F_SETFL, O_NONBLOCK) == -1)
         throw std::runtime_error("Error setting socket to non-blocking mode");
     Addr.sin_family = AF_INET;
-    Addr.sin_addr.s_addr = INADDR_ANY;
+    Addr.sin_addr.s_addr = inet_addr("0.0.0.0");
     Addr.sin_port = htons(port);
     if (bind(srvSocketFd, (struct sockaddr *)&Addr, sizeof(Addr)) == -1)
         throw std::runtime_error("Error binding socket");
@@ -193,9 +193,11 @@ void Server::receiveData(int fd)
                         client->setChStatus(false);
                         client->emptyChannel();
                     }
+                    std::string users = tmp->getClients();
+                    ch_broadcast(client->getNickname(), fd, chname, "has left your channel (Server Disconnect)");
+                    tmp->sendUserList(users);
                     if (tmp->getVecSize() == 0)
                         deleteChannel(chname);
-                    ch_broadcast(client->getNickname(), fd, chname, "has left your channel (Server Disconnect)");
                 }
                 else
                     continue ;

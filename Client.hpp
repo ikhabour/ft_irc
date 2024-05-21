@@ -78,6 +78,8 @@ class Client
         std::string getChannel();
         std::vector<std::string> returnChannel();
         bool    isOnChannel(std::string chname);
+
+        /*      Others      */
 };
 
 #endif

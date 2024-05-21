@@ -120,6 +120,34 @@ void    Channel::assignNextOp()
         setOperator(minTimeClient);
 }
 
+std::string Channel::getClients()
+{
+    std::string users;
+
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+    {
+        if ((*it)->getOpStatus(this->getName()))
+            users += '@';
+        users += (*it)->getNickname();
+        users += ' ';
+    }
+    return users;
+}
+
+void    Channel::sendUserList(std::string users)
+{
+    std::vector<Client*>::iterator it;
+    std::string msg;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+    {
+        msg = RPL_NAMREPLY((*it)->getNickname(), this->getName(), users);
+        sendMsg((*it)->getFd(), msg);
+        msg = RPL_ENDOFNAMES((*it)->getNickname(), this->getName());
+        sendMsg((*it)->getFd(), msg);
+    }
+}
+
 void    Server::Join(int fd, std::string cmd)
 {
     Client* client = getClient(fd);
@@ -150,7 +178,12 @@ void    Server::Join(int fd, std::string cmd)
         client->setChStatus(true);
         // client->setChannel(chname);
         client->setJoinTime(chname, clock());
-        sendMsg(fd, ":" + client->getNickname() + " JOIN " + chname + " :\r\n");
+
+        sendMsg(fd, RPL_JOIN(client->getNickname(), chname));
+        std::string users = tmp->getClients();
+        std::cout<<"Users : "<<users<<std::endl;
+        tmp->sendUserList(users);
+        sendMsg(fd, ":localhost 332 " + client->getNickname() + " " + chname + " :" + tmp->getTopic() + "\r\n");
         return ;
     }
     else
@@ -158,7 +191,7 @@ void    Server::Join(int fd, std::string cmd)
         Channel *tmp = Channel_exists(chname);
         if (!(tmp->getPass().empty()) && pw != tmp->getPass())
         {
-            sendMsg(fd, "Wrong Password\n");
+            sendMsg(fd, ":localhost 464 " + client->getNickname() + " :Password incorrect\r\n");
             return;
         }
         tmp->add_client(client);
@@ -167,7 +200,10 @@ void    Server::Join(int fd, std::string cmd)
         client->addclientChannel(chname);
         // client->setChannel(chname);
         client->setJoinTime(chname, clock());
-        sendMsg(fd, ":" + client->getNickname() + " JOIN " + chname + " :\r\n");
+        sendMsg(fd, RPL_JOIN(client->getNickname(), chname));
+        std::string users = tmp->getClients();
+        tmp->sendUserList(users);
+        sendMsg(fd, RPL_TOPIC(client->getNickname(), chname, tmp->getTopic()));
         ch_broadcast(client->getNickname(), fd, chname, "has joined your channel");
         return ;
     }
@@ -197,6 +233,7 @@ void    Server::Leave(int fd, std::string cmd)
         client->removeFromMap(chname);
         tmp->assignNextOp();
         tmp->remove_client(client);
+        std::string users = tmp->getClients();
         client->removeclientChannel(chname);
         if (client->getChannelsSize() == 0)
         {
@@ -209,9 +246,10 @@ void    Server::Leave(int fd, std::string cmd)
             msg.erase(msg.begin());
         // tmp->PrintOperators();
         sendMsg(fd, ":" + client->getNickname() + " PART " + chname + " :" + msg + "\r\n");
+        ch_broadcast(client->getNickname(), fd, chname, "has left your channel");
+        tmp->sendUserList(users);
         if (tmp->getVecSize() == 0)
             deleteChannel(chname);
-        ch_broadcast(client->getNickname(), fd, chname, "has left your channel");
         return ;
     }
     else
@@ -251,11 +289,6 @@ void    Server::privmsg(int fd, std::string cmd)
     {
         if (msg[0] == ':')
             msg.erase(msg.begin());
-        if (msg == "seeop")
-        {
-            std::cout<<"Op status on channel #"<<chname<<" :"<<client->getOpStatus(chname)<<std::endl;
-            return ;
-        }
         ch_broadcast(client->getNickname(), fd, chname, msg);
     }
     else if (!user.empty())
