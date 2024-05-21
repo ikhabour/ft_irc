@@ -171,25 +171,37 @@ void Server::receiveData(int fd)
     if (bytesReceived <= 0)
     {
         std::cout << RED << "Client disconnected: " << fd << WHI << std::endl;
-        // if (client->getChStatus())
-        // {
-        //     std::string chname = client->getChannel();
-        //     Channel *tmp = Channel_exists(chname);
-        //     if (tmp)
-        //     {
-        //         if (client->getOpStatus())
-        //             tmp->removeOperator(client->getNickname());
-        //         client->setJoinTime(0);
-        //         tmp->assignNextOp();
-        //         client->emptyChannel();
-        //         client->setChStatus(false);
-        //         tmp->remove_client(client);
-        //         sendMsg(client->getFd(), "You have left the channel\n");
-        //         ch_broadcast(client->getNickname(), client->getFd(), chname, " left your channel\n");
-        //         if (tmp->getVecSize() == 0)
-        //             deleteChannel(tmp->getName());
-        //     }
-        // }
+        std::vector<std::string> client_channels = client->returnChannel();
+        std::cout<<"size : "<<client_channels.size()<<std::endl;
+        if (client_channels.size())
+        {
+            std::string msg = "Leaving";
+            for (size_t i = 0; i < client_channels.size(); i++)
+            {
+                std::string chname = client_channels[i];
+                Channel *tmp = Channel_exists(chname);
+                if (tmp)
+                {
+                    if (client->getOpStatus(chname))
+                        tmp->removeOperator(client->getNickname());
+                    client->removeclientChannel(chname);
+                    client->removeFromMap(chname);
+                    tmp->assignNextOp();
+                    tmp->remove_client(client);
+                    if (client->getChannelsSize() == 0)
+                    {
+                        client->setChStatus(false);
+                        client->emptyChannel();
+                    }
+                    if (tmp->getVecSize() == 0)
+                        deleteChannel(chname);
+                    ch_broadcast(client->getNickname(), fd, chname, "has left your channel (Server Disconnect)");
+                }
+                else
+                    continue ;
+            }
+        }
+        sendMsg(fd, ":" + client->getNickname() + " QUIT " + " :" + "Left" + "\r\n");
         ClearClients(fd);
         close(fd);
     } 
@@ -273,6 +285,7 @@ void Server::startServer()
             }
         }
     }
+    std::cout<<"was here"<<std::endl;
     closeConnections();
     ClearClients(srvSocketFd);
     std::cout << GRE << "The server has been shut down successfully.\n Good Bye :)\n" << WHI;

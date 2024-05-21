@@ -61,7 +61,7 @@ bool Channel::getTopicStatus()
 
 void    Channel::setOperator(Client* client)
 {
-    client->setOpStatus(true);
+    client->setOpStatus(this->getName(), true);
     admins.push_back(client);
 }
 
@@ -72,7 +72,7 @@ void    Channel::removeOperator(std::string nickname)
     {
         if ((*it)->getNickname() == nickname)
         {
-            (*it)->setOpStatus(false);
+            (*it)->setOpStatus(this->getName(), false);
             admins.erase(it);
             break ;
         }

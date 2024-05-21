@@ -31,29 +31,35 @@ class Client
         std::string username;
         std::string password;
         std::string nickname;
-        std::string invChannel;
+        std::vector<std::string> invChannels;
+        std::vector<std::string> clientChannels;
+        std::map<std::string, clock_t> map;
+        std::map<std::string, bool> opMap;
         std::string curr_channel;
         bool in_channel;
         bool loggedIn;
-        bool op;
-        clock_t joinedIn;
+        // clock_t joinedIn;
     public:
         Client(int sockfd, const std::string& ip);
         ~Client();
         void clearBuffer();
 
         /*      Setters     */
-        void    setChannel(std::string& chname);
+
+
         void    setChStatus(bool status);
-        void    emptyChannel();
-        void    setOpStatus(bool status);
-        void    setJoinTime(clock_t time);
+        void    setOpStatus(std::string key, bool value);
+        void    setJoinTime(std::string key, clock_t value);
         void setUsername(const std::string& name);
         void setPassword(const std::string& pass);
         void setNickname(const std::string& nick);
         void setLog(bool log);
         void setBuffer(const std::string& buff);
-        void setinvChannel(std::string chname);
+        void addclientChannel(std::string chname);
+        void setChannel(std::string chname);
+        void removeclientChannel(std::string chname);
+        void emptyChannel();
+        void removeFromMap(std::string key);
 
         /*      Getters     */
 
@@ -65,11 +71,13 @@ class Client
         std::string getUsername();
         std::string getPassword();
         std::string getNickname();
-        std::string getChannel();
-        std::string getinvChannel();
         bool getChStatus();
-        bool getOpStatus();
-        clock_t getJoinTime();
+        bool getOpStatus(std::string key);
+        clock_t getJoinTime(std::string key);
+        size_t  getChannelsSize();
+        std::string getChannel();
+        std::vector<std::string> returnChannel();
+        bool    isOnChannel(std::string chname);
 };
 
 #endif

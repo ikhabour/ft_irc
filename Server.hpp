@@ -36,6 +36,7 @@
 #include <iterator>
 #include <limits>
 #include <cstdlib>
+#include <map>
 #include "Client.hpp"
 #include "Channel.hpp"
 

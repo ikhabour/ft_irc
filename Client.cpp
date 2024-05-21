@@ -12,8 +12,8 @@
 
 #include "Client.hpp"
 
-Client::Client(int sockfd, const std::string& ip) : fd(sockfd), ipAddress(ip), invChannel(""),
-curr_channel(""), in_channel(false), op(false), joinedIn(0)
+Client::Client(int sockfd, const std::string& ip) : fd(sockfd), ipAddress(ip), curr_channel(""),
+in_channel(false)
 {
     loggedIn = false;
 }
@@ -88,7 +88,6 @@ std::string Client::getNickname()
     return nickname;
 }
 
-
 void    Client::setChStatus(bool status)
 {
     this->in_channel = status;
@@ -99,7 +98,78 @@ bool Client::getChStatus()
     return this->in_channel;
 }
 
-void    Client::setChannel(std::string& chname)
+bool    Client::getOpStatus(std::string key)
+{
+    std::map<std::string, bool>::iterator it;
+    it = opMap.find(key);
+    if (it != opMap.end())
+    {
+        if (this->isOnChannel(key) && it->second)
+            return true;
+    }
+    return false;
+}
+
+void    Client::setOpStatus(std::string key, bool value)
+{
+    this->opMap[key] = value;
+}
+
+void    Client::setJoinTime(std::string key, clock_t value)
+{
+    map[key] = value;
+}
+
+clock_t Client::getJoinTime(std::string key)
+{
+    std::map<std::string, clock_t>::iterator it;
+    it = map.find(key);
+    if (it != map.end())
+        return it->second;
+    return 0;
+}
+
+void    Client::removeFromMap(std::string key)
+{
+    std::map<std::string, clock_t>::iterator it;
+    it = map.find(key);
+    if (it != map.end())
+    {
+        map.erase(it);
+        return ;
+    }
+}
+
+void    Client::addclientChannel(std::string chname)
+{
+    std::vector<std::string>::iterator it;
+    for (it = clientChannels.begin(); it != clientChannels.end(); it++)
+    {
+        if (*it == chname)
+            return ;
+    }
+    clientChannels.push_back(chname);
+}
+
+void    Client::removeclientChannel(std::string chname)
+{
+    std::vector<std::string>::iterator it;
+    for (it = clientChannels.begin(); it != clientChannels.end(); it++)
+    {
+        if (*it == chname)
+        {
+            clientChannels.erase(it);
+            break;
+        }
+    }
+}
+
+size_t  Client::getChannelsSize()
+{
+    return this->clientChannels.size();
+}
+
+void    Client::setChannel(std::string chname)
 {
     this->curr_channel = chname;
 }
@@ -108,43 +178,31 @@ std::string Client::getChannel()
 {
     return this->curr_channel;
 }
-
 void    Client::emptyChannel()
 {
-    if (!curr_channel.empty())
-        this->curr_channel.clear();
+    this->curr_channel.clear();
 }
 
-bool    Client::getOpStatus()
+bool    Client::isOnChannel(std::string chname)
 {
-    return this->op;
+    std::vector<std::string>::iterator it;
+
+    for (it = clientChannels.begin(); it != clientChannels.end(); it++)
+    {
+        // std::cout<<"value : "<<*it<<std::endl;
+        if (*it == chname)
+        {
+            // std::cout<<"yes he is "<<std::endl;
+            return true;
+        }
+    }
+    return false;
 }
 
-void    Client::setOpStatus(bool status)
+std::vector<std::string> Client::returnChannel()
 {
-    this->op = status;
+    return this->clientChannels;
 }
-
-void    Client::setJoinTime(clock_t time)
-{
-    this->joinedIn = time;
-}
-
-clock_t Client::getJoinTime()
-{
-    return this->joinedIn;
-}
-
-void    Client::setinvChannel(std::string chname)
-{
-    this->invChannel = chname;
-}
-
-std::string Client::getinvChannel()
-{
-    return this->invChannel;
-}
-
 // void Client::authenticate()
 // {
 //     char buffer[1024] = {0};

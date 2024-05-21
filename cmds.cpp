@@ -50,69 +50,31 @@ void    Server::ch_broadcast(std::string user_nick, int excep, std::string chnam
     for (std::vector<Client*>::iterator it = clients.begin(); it != clients.end(); it++)
     {
         Client *tmp = *it;
-        if (tmp->getChStatus() && tmp->getChannel() == chname && tmp->getFd() != excep)
+        // std::cout<<"chstatus  for "<< tmp->getNickname() <<" : "<<tmp->getChStatus()<<std::endl;
+        // std::cout<<"onChannel for "<< tmp->getNickname() <<" : "<<tmp->isOnChannel(chname)<<std::endl;
+        if (tmp->getChStatus() && tmp->isOnChannel(chname) && tmp->getFd() != excep)
             sendMsg(tmp->getFd(), ":" + user_nick + " PRIVMSG " + chname + " :" + msg + "\r\n");
     }
 }
 
-void    Server::Join(int fd, std::string cmd)
+std::vector<std::string> split_words(std::string& cmd)
 {
-    Client* client = getClient(fd);
-    std::string chname;
-    std::string pw;
-    cmd = cmd.substr(5);
+    std::vector<std::string> vec;
     size_t pos = cmd.find(" ");
-
     if (pos != std::string::npos)
     {
-        chname = cmd.substr(0, pos);
+        vec.push_back(cmd.substr(0, pos));
         cmd = cmd.substr(pos);
         pos = cmd.find_first_not_of(" ");
         if (pos != std::string::npos)
-            pw = cmd.substr(pos);
-    }
-    else
-        chname = cmd;
-    std::cout<<"cmd : ("<<cmd + ')'<<std::endl;
-    std::cout<<"chname : ("<<chname + ')'<<std::endl;
-    std::cout<<"pw : ("<<pw + ')'<<std::endl;
-    if (chname.empty())
-    {
-        sendMsg(fd, "Please provide a channel name\n");
-        return ;
-    }
-    if (chname[0] != '#' && chname[0] != '&')
-    {
-        sendMsg(fd, "Channel name must start with \'#\' or \'&\'\n");
-        return ;
-    }
-    if (!Channel_exists(chname))
-    {
-        Channel *tmp = makeChannel(client, chname, pw);
-        tmp->add_client(client);
-        tmp->setOperator(client);
-        client->setChStatus(true);
-        client->setChannel(chname);
-        client->setJoinTime(clock());
-        sendMsg(fd, ":" + client->getNickname() + " JOIN " + chname + " :\r\n");
-        return ;
-    }
-    else
-    {
-        Channel *tmp = Channel_exists(chname);
-        if (!(tmp->getPass().empty()) && pw != tmp->getPass())
         {
-            sendMsg(fd, "Wrong Password\n");
-            return;
+            cmd = cmd.substr(pos);
+            vec.push_back(cmd);
         }
-        tmp->add_client(client);
-        client->setChStatus(true);
-        client->setChannel(chname);
-        client->setJoinTime(clock());
-        sendMsg(fd, ":" + client->getNickname() + " JOIN " + chname + " :\r\n");
-        ch_broadcast(client->getNickname(), fd, chname, "joined your channel");
-        return ;
     }
+    else
+        vec.push_back(cmd);
+    return vec;
 }
 
 bool    only_spaces(std::string str)
@@ -134,24 +96,129 @@ Client* Server::srvFindClient(std::string nickname)
     return NULL;
 }
 
-std::vector<std::string> split_words(std::string& cmd)
+void    Channel::assignNextOp()
 {
-    std::vector<std::string> vec;
-    size_t pos = cmd.find(" ");
-    if (pos != std::string::npos)
+    if (getVecSize() == 0 || admins.size() >= 1)
+        return ;
+    std::string chname = this->getName();
+    int lowestTime = std::numeric_limits<int>::max();
+    Client* minTimeClient = NULL;
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); ++it) 
     {
-        vec.push_back(cmd.substr(0, pos));
-        cmd = cmd.substr(pos);
-        pos = cmd.find_first_not_of(" ");
-        if (pos != std::string::npos)
+        if ((*it)->getJoinTime(chname))
         {
-            cmd = cmd.substr(pos);
-            vec.push_back(cmd);
+            int clientTime = (*it)->getJoinTime(chname);
+            if (clientTime < lowestTime)
+            {
+                lowestTime = clientTime;
+                minTimeClient = *it;
+            }
         }
     }
+    if (minTimeClient)
+        setOperator(minTimeClient);
+}
+
+void    Server::Join(int fd, std::string cmd)
+{
+    Client* client = getClient(fd);
+    std::string chname;
+    std::string pw;
+    cmd = cmd.substr(5);
+    std::vector<std::string> cmds = split_words(cmd);
+    chname = cmds[0];
+    if (cmds.size() > 1)
+        pw = cmds[1];
+    if (chname.empty())
+    {
+        sendMsg(fd, "Please provide a channel name\n");
+        return ;
+    }
+    if (chname[0] != '#' && chname[0] != '&')
+    {
+        sendMsg(fd, "Channel name must start with \'#\' or \'&\'\n");
+        return ;
+    }
+    if (!Channel_exists(chname))
+    {
+        Channel *tmp = makeChannel(client, chname, pw);
+        std::cout<<"Channel created"<<std::endl;
+        tmp->add_client(client);
+        tmp->setOperator(client);
+        client->addclientChannel(chname);
+        client->setChStatus(true);
+        // client->setChannel(chname);
+        client->setJoinTime(chname, clock());
+        sendMsg(fd, ":" + client->getNickname() + " JOIN " + chname + " :\r\n");
+        return ;
+    }
     else
-        vec.push_back(cmd);
-    return vec;
+    {
+        Channel *tmp = Channel_exists(chname);
+        if (!(tmp->getPass().empty()) && pw != tmp->getPass())
+        {
+            sendMsg(fd, "Wrong Password\n");
+            return;
+        }
+        tmp->add_client(client);
+        if (!client->getChannelsSize())
+            client->setChStatus(true);
+        client->addclientChannel(chname);
+        // client->setChannel(chname);
+        client->setJoinTime(chname, clock());
+        sendMsg(fd, ":" + client->getNickname() + " JOIN " + chname + " :\r\n");
+        ch_broadcast(client->getNickname(), fd, chname, "has joined your channel");
+        return ;
+    }
+}
+
+void    Channel::PrintOperators()
+{
+    std::vector<Client*>::iterator it;
+    for (it = admins.begin(); it != admins.end(); it++)
+        std::cout<<"User : " << (*it)->getNickname() << " is an Operator on channel : "<<this->getName()<<std::endl;
+}
+
+void    Server::Leave(int fd, std::string cmd)
+{
+    Client* client = getClient(fd);
+    cmd = cmd.substr(5);
+    std::vector<std::string> cmds = split_words(cmd);
+    std::string chname;
+    std::string msg;
+    chname = cmds[0];
+    msg = cmds[1];
+    Channel *tmp = Channel_exists(chname);
+    if (tmp)
+    {
+        if (client->getOpStatus(chname))
+            tmp->removeOperator(client->getNickname());
+        client->removeFromMap(chname);
+        tmp->assignNextOp();
+        tmp->remove_client(client);
+        client->removeclientChannel(chname);
+        if (client->getChannelsSize() == 0)
+        {
+            client->setChStatus(false);
+            client->emptyChannel();
+        }
+        if (only_spaces(msg))
+            msg = "Leaving";
+        if (msg[0] == ':')
+            msg.erase(msg.begin());
+        // tmp->PrintOperators();
+        sendMsg(fd, ":" + client->getNickname() + " PART " + chname + " :" + msg + "\r\n");
+        if (tmp->getVecSize() == 0)
+            deleteChannel(chname);
+        ch_broadcast(client->getNickname(), fd, chname, "has left your channel");
+        return ;
+    }
+    else
+    {
+        sendMsg(fd, "This channel does not exists\n");
+        return ;
+    }
 }
 
 void    Server::privmsg(int fd, std::string cmd)
@@ -184,6 +251,11 @@ void    Server::privmsg(int fd, std::string cmd)
     {
         if (msg[0] == ':')
             msg.erase(msg.begin());
+        if (msg == "seeop")
+        {
+            std::cout<<"Op status on channel #"<<chname<<" :"<<client->getOpStatus(chname)<<std::endl;
+            return ;
+        }
         ch_broadcast(client->getNickname(), fd, chname, msg);
     }
     else if (!user.empty())
@@ -206,66 +278,5 @@ void    Server::privmsg(int fd, std::string cmd)
             sendMsg(fd, "This user is not connected to the server\n");
             return ;
         }
-    }
-}
-
-void    Channel::assignNextOp()
-{
-
-    if (getVecSize() == 0 || admins.size() >= 1)
-        return ;
-    int lowestTime = std::numeric_limits<int>::max();
-    Client* minTimeClient = NULL;
-    std::vector<Client*>::iterator it;
-    for (it = _clients.begin(); it != _clients.end(); ++it) 
-    {
-        if ((*it)->getJoinTime())
-        {
-            int clientTime = (*it)->getJoinTime();
-            if (clientTime < lowestTime)
-            {
-                lowestTime = clientTime;
-                minTimeClient = *it;
-            }
-        }
-    }
-    if (minTimeClient)
-        setOperator(minTimeClient);
-}
-
-void    Server::Leave(int fd, std::string cmd)
-{
-    Client* client = getClient(fd);
-    (void)client;
-    cmd = cmd.substr(5);
-    std::vector<std::string> cmds = split_words(cmd);
-    std::string chname;
-    std::string msg;
-    for (size_t i = 0; i < cmds.size(); i++)
-        std::cout<<"elm : ("<<cmds[i] + ')'<<std::endl;
-    chname = cmds[0];
-    msg = cmds[1];
-    Channel *tmp = Channel_exists(chname);
-    if (tmp)
-    {
-        if (client->getOpStatus())
-            tmp->removeOperator(client->getNickname());
-        client->setChStatus(false);
-        client->emptyChannel();
-        client->setJoinTime(0);
-        tmp->assignNextOp();
-        tmp->remove_client(client);
-        if (only_spaces(msg))
-            msg = "Leaving";
-        if (msg[0] == ':')
-            msg.erase(msg.begin());
-        sendMsg(fd, ":" + client->getNickname() + " PART " + chname + " :" + msg + "\r\n");
-        ch_broadcast(client->getNickname(), fd, chname, "left your channel");
-        return ;
-    }
-    else
-    {
-        sendMsg(fd, "This channel does not exists\n");
-        return ;
     }
 }
