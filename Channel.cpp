@@ -59,11 +59,11 @@ bool Channel::getTopicStatus()
     return this->_t;
 }
 
-void    Channel::setOperator(Client* client)
+void    Channel::setOperator(Client* client, Client* target)
 {
-    client->setOpStatus(this->getName(), true);
+    target->setOpStatus(this->getName(), true);
     // :nickname!username@hostname MODE #channelname +o targetnickname
-    std::string msg = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost" + " MODE " + this->getName() + " +o " + client->getNickname() +"\r\n";
+    std::string msg = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost" + " MODE " + this->getName() + " +o " + target->getNickname() +"\r\n";
     sendMsg(client->getFd(), msg);
     admins.push_back(client);
 }
@@ -124,4 +124,40 @@ void    Channel::chsendMsg(std::string msg)
     std::vector<Client*>::iterator it;
     for (it = _clients.begin(); it != _clients.end(); it++)
         sendMsg((*it)->getFd(), (*it)->getNickname() + " : " + msg + '\n');
+}
+
+void    Channel::updateTopic(std::string topic)
+{
+    std::vector<Client*>::iterator it;
+    std::string msg;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+    {
+        if (*it)
+        {
+            msg = RPL_TOPIC((*it)->getNickname(), this->getName(), topic);
+            sendMsg((*it)->getFd(), msg);
+        }
+    }
+}
+
+
+void    Channel::sendKick(std::string reason)
+{
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+    {
+        if (*it)
+            sendMsg((*it)->getFd(), reason);
+    }
+}
+
+
+void    Channel::sendLeave(std::string msg)
+{
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+    {
+        if (*it)
+            sendMsg((*it)->getFd(), msg);
+    }
 }

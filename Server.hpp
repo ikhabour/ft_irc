@@ -22,7 +22,12 @@
 #define SBLU "\033[38;5;39m"
 
 
+
+#include <cstdio>
+
+
 #include <cstring>
+#include <string>
 #include <iostream>
 #include <sstream>
 #include <sys/socket.h>
@@ -54,6 +59,7 @@ class Server
         std::vector<Client*> clients;
         std::vector<struct pollfd> fds;
         std::vector<Channel*> _channels;
+        std::vector<int> clientsFds;
         static bool sig;
     public:
         Server(int port, std::string pass);
@@ -64,7 +70,7 @@ class Server
         void receiveData(int fd);
         static void signalHandler(int signum);
         void closeConnections();
-        void ClearClients(int fd);
+        void ClearClients(int fd, int flag);
         void parse_cmd(int fd, std::string cmd);
         Client *getClient(int fd);
         void clientAuth(int fd, std::string cmd);
@@ -76,20 +82,21 @@ class Server
         void Username(int fd, std::string cmd);
         bool registration(int fd);
         void startServer();
+        void    ClearChannels();
 
         /*      Commands        */
 
 
         void    Join(int fd, std::string cmd);
         void    Leave(int fd, std::string cmd);
-        // void    msg(int fd, std::string cmd);
         void    privmsg(int fd, std::string cmd);
-        // void    topic(int fd, std::string cmd);
+        void    list(int fd, std::string cmd);
+        void    topic(int fd, std::string cmd);
 
         /*      Operator Commands       */
 
 
-        // void    Kick(int fd, std::string cmd);
+        void    Kick(int fd, std::string cmd);
         // void    Invite(int fd, std::string cmd);
 
 
@@ -120,44 +127,50 @@ std::string removeExtraSpaces(const std::string& input);
 
 /* Error Responses */
 
-#define ERR_NOTREGISTERED(source)                       "451 " + source + " :You have not registered"
-#define ERR_ALREADYREGISTERED(source)                   "462 " + source + " :You may not register"
-#define ERR_PASSWDMISMATCH(source)                      "464 " + source + " :Password is incorrect"
+#define ERR_NOTREGISTERED(source)                       ":localhost 451 " + source + " :You have not registered"
+#define ERR_ALREADYREGISTERED(source)                   ":localhost 462 " + source + " :You may not register\r\n"
+#define ERR_PASSWDMISMATCH(source)                      ":localhost 464 " + source + " :Password is incorrect\r\n"
 #define ERR_NONICKNAMEGIVEN(source)                     "431 " + source + " :Nickname not given"
-#define ERR_NICKNAMEINUSE(source)                       "433 " + source + " " + source  + " :Nickname is already in use"
+#define ERR_NICKNAMEINUSE(source)                       ":localhost 433 " + source + " " + source  + " :Nickname is already in use\r\n"
 
 #define ERR_UNKNOWNCOMMAND(source, command)             "421 " + source + " " + command + " :Unknown command"
 #define ERR_NEEDMOREPARAMS(source, command)             "461 " + source + " " + command + " :Not enough parameters"
 
 #define ERR_TOOMANYCHANNELS(source, channel)            "405 " + source + " " + channel + " :You have joined too many channels"
 #define ERR_NOTONCHANNEL(source, channel)               "442 " + source + " " + channel + " :You're not on that channel"
-#define ERR_NOSUCHCHANNEL(source, channel)              "403 " + source + " " + channel + " :No such channel"
+#define ERR_NOSUCHCHANNEL(source, channel)              ":localhost 403 " + source + " " + channel + " :No such channel\r\n"
 #define ERR_BADCHANNELKEY(source, channel)              "475 " + source + " " + channel + " :Cannot join channel (+k)"
 #define ERR_CHANNELISFULL(source, channel)              "471 " + source + " " + channel + " :Cannot join channel (+l)"
 #define ERR_CANNOTSENDTOCHAN(source, channel)           "404 " + source + " " + channel + " :Cannot send to channel"
 #define ERR_CHANOPRIVSNEEDED(source, channel)           "482 " + source + " " + channel + " :You're not channel operator"
 
 #define ERR_NOSUCHNICK(source, nickname)                "401 " + source + " " + nickname + " :No such nick/channel"
-#define ERR_USERNOTINCHANNEL(source, nickname, channel) "441 " + source + " " + nickname + " " + channel + " :They aren't on that channel"
+#define ERR_USERNOTINCHANNEL(source, nickname, channel) ":localhost 441 " + source + " " + nickname + " " + channel + " :They aren't on that channel\r\n"
 
 
 /* Numeric Responses */
 
-#define RPL_WELCOME(source)                             "001 " + source + " :Welcome " + source + " to the ft_irc network"
+#define RPL_WELCOME(source)                             ":localhost 001 " + source + " :Welcome " + source + " to the ft_irc network\r\n"
 #define RPL_NAMREPLY(source, channel, users)            ":localhost 353 " + source + " = " + channel + " :" + users + "\r\n"
 #define RPL_ENDOFNAMES(source, channel)                 ":localhost 366 " + source + " " + channel + " :End of /NAMES list.\r\n"
 #define RPL_TOPIC(source, channel, topic)               ":localhost 332 " + source + " " + channel + " :" + topic + "\r\n"
+
+/* List Channel Responses */
+
+#define RPL_LISTSTART(source)                           ":localhost 321 " + source + " Channel : Users Name\r\n"
+#define RPL_LIST(source, channel, visible, topic)       ":localhost 322 " + source + " " + channel + " " + visible + " :" + topic + "\r\n"
+#define RPL_LISTEND(source)                             ":localhost 323 " + source + " :End of /List\r\n"
 
 
 /* Command Responses */
 
 #define RPL_JOIN(source, channel)                       ":" + source + " JOIN :" + channel + "\r\n"
-#define RPL_PART(source, channel)                       ":" + source + " PART :" + channel + "\r\n"
+#define RPL_PART(source, channel, msg)                  ":" + source + " PART " + channel + " :" + msg + "\r\n"
 #define RPL_PING(source, token)                         ":" + source + " PONG :" + token
-#define RPL_PRIVMSG(source, target, message)            ":" + source + " PRIVMSG " + target + " :" + message
+#define RPL_PRIVMSG(source, target, message)            ":" + source + " PRIVMSG " + target + " :" + message + "\r\n"
 #define RPL_NOTICE(source, target, message)             ":" + source + " NOTICE " + target + " :" + message
-#define RPL_QUIT(source, message)                       ":" + source + " QUIT :Quit: " + message
-#define RPL_KICK(source, channel, target, reason)       ":" + source + " KICK " + channel + " " + target + " :" + reason
-#define RPL_MODE(source, channel, modes, args)          ":" + source + " MODE " + channel + " " + modes + " " + args
+#define RPL_QUIT(source, message)                       ":" + source + " QUIT :Quit: " + message + "\r\n"
+#define RPL_KICK(source, channel, target, reason)       ":" + source + " KICK " + channel + " " + target + " :" + reason + "\r\n"
+#define RPL_MODE(source, channel, modes, args)          ":" + source + " MODE " + channel + " " + modes + " " + args + "\r\n"
 
 #endif

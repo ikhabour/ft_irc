@@ -46,7 +46,7 @@ void Server::SocketMaker()
     if (fcntl(srvSocketFd, F_SETFL, O_NONBLOCK) == -1)
         throw std::runtime_error("Error setting socket to non-blocking mode");
     Addr.sin_family = AF_INET;
-    Addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    Addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     Addr.sin_port = htons(port);
     if (bind(srvSocketFd, (struct sockaddr *)&Addr, sizeof(Addr)) == -1)
         throw std::runtime_error("Error binding socket");
@@ -100,19 +100,24 @@ void Server::parse_cmd(int fd, std::string cmd)
             Join(fd, cmd);
         if (vec.size() && vec[0] == "PART")
             Leave(fd, cmd);
-        // if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
-        //     msg(fd, cmd);
         if (vec.size() && (vec[0] == "PRIVMSG" || vec[0] == "privmsg"))
             privmsg(fd, cmd);
-        // if (vec.size() && (vec[0] == "TOPIC" || vec[0] == "topic"))
-        //     topic(fd, cmd);
-        // if (vec.size() && (vec[0] == "KICK" || vec[0] == "kick"))
-        //     Kick(fd, cmd);
+        if (vec.size() && (vec[0] == "LIST"))
+            list(fd, cmd);
+        if (vec.size() && (vec[0] == "TOPIC" || vec[0] == "topic"))
+            topic(fd, cmd);
+        if (vec.size() && (vec[0] == "KICK" || vec[0] == "kick"))
+            Kick(fd, cmd);
         // if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))
         //     Invite(fd, cmd);
     }
     else
-        sendMsg(fd, "Invalid command\n");
+    {
+        if (!registration(fd))
+            sendMsg(fd, "Please make sure you've picked a nickname and a username\n");
+        else
+            sendMsg(fd, "Invalid command\n");
+    }
 }
 
 Client *Server::getClient(int fd)
@@ -157,7 +162,9 @@ void Server::addNewClient()
     clientPollFd.events = POLLIN;
     clientPollFd.revents = 0;
     fds.push_back(clientPollFd);
-    clients.push_back(new Client(clientFd, inet_ntoa(clientAddr.sin_addr)));
+    Client* client = new Client(clientFd, inet_ntoa(clientAddr.sin_addr));
+    clients.push_back(client);
+    clientsFds.push_back(client->getFd());
     std::cout << GRE << "New client connected: " << inet_ntoa(clientAddr.sin_addr) << WHI << std::endl;
 }
 
@@ -172,7 +179,6 @@ void Server::receiveData(int fd)
     {
         std::cout << RED << "Client disconnected: " << fd << WHI << std::endl;
         std::vector<std::string> client_channels = client->returnChannel();
-        std::cout<<"size : "<<client_channels.size()<<std::endl;
         if (client_channels.size())
         {
             std::string msg = "Leaving";
@@ -186,7 +192,7 @@ void Server::receiveData(int fd)
                         tmp->removeOperator(client->getNickname());
                     client->removeclientChannel(chname);
                     client->removeFromMap(chname);
-                    tmp->assignNextOp();
+                    tmp->assignNextOp(client);
                     tmp->remove_client(client);
                     if (client->getChannelsSize() == 0)
                     {
@@ -203,8 +209,8 @@ void Server::receiveData(int fd)
                     continue ;
             }
         }
-        sendMsg(fd, ":" + client->getNickname() + " QUIT " + " :" + "Left" + "\r\n");
-        ClearClients(fd);
+        // sendMsg(fd, RPL_QUIT(client->getNickname(), "Left"));
+        ClearClients(fd, 0);
         close(fd);
     } 
     else 
@@ -221,8 +227,20 @@ void Server::receiveData(int fd)
     }
 }
 
-void Server::ClearClients(int fd)
+void Server::ClearClients(int fd, int flag)
 {
+    if (flag)
+    {
+        //TODO : clear everything;
+        std::vector<Client*>::iterator it = this->clients.begin();
+        while (it != clients.end())
+        {
+            delete *it;
+            it++;
+        }
+        this->clients.clear();
+        return;
+    }
     for (size_t i = 0; i < clients.size(); i++)
     {
         if (clients[i]->getFd() == fd)
@@ -244,14 +262,28 @@ void Server::ClearClients(int fd)
 
 void Server::closeConnections() 
 {
-    for (size_t i = 0; i < this->clients.size(); i++)
+    std::vector<int>::iterator it;
+    for (it = clientsFds.begin(); it != clientsFds.end(); it++)
     {
-        close(clients[i]->getFd());
+       if (*it && *it != srvSocketFd)
+        close(*it);
     }
     if (this->srvSocketFd != -1)
     {
         close(srvSocketFd);
     }
+}
+
+void    Server::ClearChannels()
+{
+    std::vector<Channel*>::iterator it;
+    for (it = _channels.begin(); it != _channels.end(); it++)
+    {
+        Channel* tmp = *it;
+        if (tmp)
+            delete tmp;
+    }
+    _channels.clear();
 }
 
 void Server::initServer() 
@@ -287,8 +319,8 @@ void Server::startServer()
             }
         }
     }
-    std::cout<<"was here"<<std::endl;
     closeConnections();
-    ClearClients(srvSocketFd);
+    ClearClients(srvSocketFd, 1);
+    ClearChannels();
     std::cout << GRE << "The server has been shut down successfully.\n Good Bye :)\n" << WHI;
 }

@@ -1,5 +1,5 @@
 NAME= ircserv
-FLAGS= -Wall -Wextra -Werror -std=c++98 -fsanitize=address -g3
+FLAGS= -Wall -Wextra -Werror -std=c++98 -g3 #-fsanitize=address
 
 SRC = Server.cpp Client.cpp Authentication.cpp Channel.cpp cmds.cpp main.cpp
 

@@ -80,6 +80,7 @@ class Client
         bool    isOnChannel(std::string chname);
 
         /*      Others      */
+
 };
 
 #endif

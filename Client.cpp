@@ -203,6 +203,7 @@ std::vector<std::string> Client::returnChannel()
 {
     return this->clientChannels;
 }
+
 // void Client::authenticate()
 // {
 //     char buffer[1024] = {0};

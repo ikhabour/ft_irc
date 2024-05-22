@@ -33,7 +33,10 @@ void Server::clientAuth(int fd, std::string cmd)
             std::cout << GRE << "Client logged in successfully\n" << WHI;
         }
         else
+		{
+			sendMsg(fd, ERR_PASSWDMISMATCH(client->getNickname()));
             std::cerr << "Invalid password\n";
+		}
     }
 }
 
@@ -84,12 +87,13 @@ void Server::Nickname(int fd, std::string cmd)
 	}
 	else if (nickNameInUse(cmd))
 	{
-		sendMsg(fd, "Nickname already in use, try another one\n");
+		sendMsg(fd, "Nickname is already in use\n");
 		return ;
 	}
 	else
 	{
 		client->setNickname(cmd);
+		sendMsg(fd, "Nickname set to : " + cmd + "\n");
 		std::cout << GRE << "Nickname set successfully to: " << cmd << WHI << std::endl;
 	}
 	return;
@@ -103,12 +107,15 @@ void Server::Username(int fd, std::string cmd)
 	if (!client->getLog())
 	{
 		std::cerr << "Client not logged in\n";
+		sendMsg(fd, ERR_NOTREGISTERED(client->getNickname()));
 		return;
 	}
-	else
+	else if (client->getLog() && !client->getNickname().empty())
 	{
 		client->setUsername(cmds[0]);
+		sendMsg(fd, "Username set to : " + cmds[0] + "\n");
 		std::cout << GRE << "Username set successfully to: " << cmds[0] << WHI << std::endl;
+        sendMsg(fd, RPL_WELCOME(client->getNickname()));
 	}
 }
 

@@ -30,7 +30,7 @@ class Channel
         void setTopic(std::string& Topic);
         void restrictTopic(bool status);
         void setInviteOnly(bool status);
-        void setOperator(Client* client);
+        void setOperator(Client* client, Client* target);
         void removeOperator(std::string nickname);
 
         /*    Getters     */
@@ -51,10 +51,12 @@ class Channel
 
         void    add_client(Client* client);
         void    remove_client(Client* client);
-        void    assignNextOp();
+        void    assignNextOp(Client* target);
         void    chsendMsg(std::string msg);
         std::string getClients();
         void    sendUserList(std::string users);
-
+        void    updateTopic(std::string topic);
+        void    sendKick(std::string reason);
+        void    sendLeave(std::string msg);
         void    PrintOperators();
 };
