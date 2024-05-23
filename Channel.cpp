@@ -70,7 +70,7 @@ void    Channel::setOperator(Client* client, Client* target)
     // :nickname!username@hostname MODE #channelname +o targetnickname
     std::string msg = RPL_MODE(client->getNickname(), this->getName(), "+o", target->getNickname());
     this->sendMode(msg);
-    admins.push_back(client);
+    admins.push_back(target);
 }
 
 void    Channel::removeOperator(std::string nickname)

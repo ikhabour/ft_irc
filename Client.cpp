@@ -232,3 +232,14 @@ bool    Client::isInvitedToChannel(std::string chname)
     }
     return false;
 }
+
+
+void    Client::PrintMap()
+{
+    std::map<std::string, bool>::iterator it;
+    for (it = opMap.begin(); it != opMap.end(); it++)
+    {
+        if (it->second)
+            std::cout<<this->nickname<<" is an operator on channel : "<<it->first<<std::endl;
+    }
+}

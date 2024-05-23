@@ -222,6 +222,7 @@ void    Server::Join(int fd, std::string cmd)
         client->setJoinTime(chname, clock());
         tmp->BroadcastResponse(true, fd, RPL_JOIN(client->getNickname(), chname));
         std::string users = tmp->getClients();
+        std::cout<<"Users 2 : "<<users <<std::endl;
         tmp->sendUserList(users);
         tmp->updateTopic(tmp->getTopic());
         return ;
@@ -259,7 +260,6 @@ void    Server::Leave(int fd, std::string cmd)
         // tmp->sendLeave(RPL_PART(client->getNickname(), chname, msg));
         tmp->remove_client(client);
         std::string users = tmp->getClients();
-        std::cout<<"Users : "<< users <<std::endl;
         client->removeclientChannel(chname);
         if (client->getChannelsSize() == 0)
         {

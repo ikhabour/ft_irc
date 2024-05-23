@@ -85,6 +85,9 @@ class Client
 
         bool    isChatBoxOpen(std::string nickname);
         void    addChatBox(std::string nickname);
+
+
+        void    PrintMap();
 };
 
 #endif
