@@ -33,12 +33,12 @@ class Client
         std::string nickname;
         std::vector<std::string> invChannels;
         std::vector<std::string> clientChannels;
+        std::vector<std::string> openChatBoxes;
         std::map<std::string, clock_t> map;
         std::map<std::string, bool> opMap;
         std::string curr_channel;
         bool in_channel;
         bool loggedIn;
-        // clock_t joinedIn;
     public:
         Client(int sockfd, const std::string& ip);
         ~Client();
@@ -60,6 +60,7 @@ class Client
         void removeclientChannel(std::string chname);
         void emptyChannel();
         void removeFromMap(std::string key);
+        void InvitetoChannel(std::string chname);
 
         /*      Getters     */
 
@@ -78,9 +79,12 @@ class Client
         std::string getChannel();
         std::vector<std::string> returnChannel();
         bool    isOnChannel(std::string chname);
+        bool    isInvitedToChannel(std::string chname);
 
         /*      Others      */
 
+        bool    isChatBoxOpen(std::string nickname);
+        void    addChatBox(std::string nickname);
 };
 
 #endif

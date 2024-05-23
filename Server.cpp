@@ -108,8 +108,8 @@ void Server::parse_cmd(int fd, std::string cmd)
             topic(fd, cmd);
         if (vec.size() && (vec[0] == "KICK" || vec[0] == "kick"))
             Kick(fd, cmd);
-        // if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))
-        //     Invite(fd, cmd);
+        if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))
+            Invite(fd, cmd);
     }
     else
     {

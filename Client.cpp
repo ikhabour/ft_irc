@@ -189,12 +189,8 @@ bool    Client::isOnChannel(std::string chname)
 
     for (it = clientChannels.begin(); it != clientChannels.end(); it++)
     {
-        // std::cout<<"value : "<<*it<<std::endl;
         if (*it == chname)
-        {
-            // std::cout<<"yes he is "<<std::endl;
             return true;
-        }
     }
     return false;
 }
@@ -204,35 +200,35 @@ std::vector<std::string> Client::returnChannel()
     return this->clientChannels;
 }
 
-// void Client::authenticate()
-// {
-//     char buffer[1024] = {0};
-//     int valread = read(fd, buffer, 1024);
-//     if (valread == -1)
-//     {
-//         std::cerr << "Error reading from client\n";
-//         return;
-//     }
-//     std::string msg(buffer);
-//     if (msg.find("PASS") == 0)
-//     {
-//         password = msg.substr(5, msg.size() - 5);
-//         std::cout << "Password received: " << password << std::endl;
-//     }
-//     else if (msg.find("USER") == 0)
-//     {
-//         username = msg.substr(5, msg.size() - 5);
-//         std::cout << "Username received: " << username << std::endl;
-//     }
-//     else if (msg.find("NICK") == 0)
-//     {
-//         nickname = msg.substr(5, msg.size() - 5);
-//         std::cout << "Nickname received: " << nickname << std::endl;
-//     }
-//     else
-//     {
-//         std::cerr << "Invalid command received\n";
-//     }
-// }
 
+bool    Client::isChatBoxOpen(std::string nickname)
+{
+    std::vector<std::string>::iterator it;
+    for (it = openChatBoxes.begin(); it != openChatBoxes.end(); it++)
+    {
+        if ((*it) == nickname)
+            return true;
+    }
+    return false;
+}
 
+void    Client::addChatBox(std::string nickname)
+{
+    openChatBoxes.push_back(nickname);
+}
+
+void    Client::InvitetoChannel(std::string chname)
+{
+    this->invChannels.push_back(chname);
+}
+
+bool    Client::isInvitedToChannel(std::string chname)
+{
+    std::vector<std::string>::iterator it;
+    for (it = invChannels.begin(); it != invChannels.end(); it++)
+    {
+        if (*it == chname)
+            return true;
+    }
+    return false;
+}

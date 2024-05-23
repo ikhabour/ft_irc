@@ -54,9 +54,15 @@ class Channel
         void    assignNextOp(Client* target);
         void    chsendMsg(std::string msg);
         std::string getClients();
+
+        /* Broadcast responses  */
+
+        void    BroadcastResponse(bool toall, int excep, std::string response);
+
         void    sendUserList(std::string users);
         void    updateTopic(std::string topic);
-        void    sendKick(std::string reason);
-        void    sendLeave(std::string msg);
+        void    sendMode(std::string msg);
+
+
         void    PrintOperators();
 };

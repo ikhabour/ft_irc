@@ -59,12 +59,17 @@ bool Channel::getTopicStatus()
     return this->_t;
 }
 
+void Channel::setPass(std::string Password)
+{
+    this->_password = Password;
+}
+
 void    Channel::setOperator(Client* client, Client* target)
 {
     target->setOpStatus(this->getName(), true);
     // :nickname!username@hostname MODE #channelname +o targetnickname
-    std::string msg = ":" + client->getNickname() + "!" + client->getUsername() + "@localhost" + " MODE " + this->getName() + " +o " + target->getNickname() +"\r\n";
-    sendMsg(client->getFd(), msg);
+    std::string msg = RPL_MODE(client->getNickname(), this->getName(), "+o", target->getNickname());
+    this->sendMode(msg);
     admins.push_back(client);
 }
 
@@ -119,12 +124,6 @@ size_t Channel::getOpVecSize()
     return this->admins.size();
 }
 
-void    Channel::chsendMsg(std::string msg)
-{
-    std::vector<Client*>::iterator it;
-    for (it = _clients.begin(); it != _clients.end(); it++)
-        sendMsg((*it)->getFd(), (*it)->getNickname() + " : " + msg + '\n');
-}
 
 void    Channel::updateTopic(std::string topic)
 {
@@ -140,24 +139,28 @@ void    Channel::updateTopic(std::string topic)
     }
 }
 
-
-void    Channel::sendKick(std::string reason)
-{
-    std::vector<Client*>::iterator it;
-    for (it = _clients.begin(); it != _clients.end(); it++)
-    {
-        if (*it)
-            sendMsg((*it)->getFd(), reason);
-    }
-}
-
-
-void    Channel::sendLeave(std::string msg)
+void    Channel::sendMode(std::string msg)
 {
     std::vector<Client*>::iterator it;
     for (it = _clients.begin(); it != _clients.end(); it++)
     {
         if (*it)
             sendMsg((*it)->getFd(), msg);
+    }
+}
+
+
+void   Channel::BroadcastResponse(bool toall, int excep, std::string response)
+{
+    std::vector<Client*>::iterator it;
+    for (it = _clients.begin(); it != _clients.end(); it++)
+    {
+        if (*it && toall)
+        {
+            sendMsg((*it)->getFd(), response);
+            continue;
+        }
+        else if (*it && (*it)->getFd() != excep)
+            sendMsg((*it)->getFd(), response);
     }
 }

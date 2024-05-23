@@ -97,7 +97,7 @@ class Server
 
 
         void    Kick(int fd, std::string cmd);
-        // void    Invite(int fd, std::string cmd);
+        void    Invite(int fd, std::string cmd);
 
 
         /*      Utils       */
@@ -132,6 +132,7 @@ std::string removeExtraSpaces(const std::string& input);
 #define ERR_PASSWDMISMATCH(source)                      ":localhost 464 " + source + " :Password is incorrect\r\n"
 #define ERR_NONICKNAMEGIVEN(source)                     "431 " + source + " :Nickname not given"
 #define ERR_NICKNAMEINUSE(source)                       ":localhost 433 " + source + " " + source  + " :Nickname is already in use\r\n"
+#define ERR_USERONCHANNEL(target, channel, msg)         ":localhost 443 " + target + " " + channel + " : " + target + " " + msg + "\r\n"
 
 #define ERR_UNKNOWNCOMMAND(source, command)             "421 " + source + " " + command + " :Unknown command"
 #define ERR_NEEDMOREPARAMS(source, command)             "461 " + source + " " + command + " :Not enough parameters"
@@ -142,9 +143,9 @@ std::string removeExtraSpaces(const std::string& input);
 #define ERR_BADCHANNELKEY(source, channel)              "475 " + source + " " + channel + " :Cannot join channel (+k)"
 #define ERR_CHANNELISFULL(source, channel)              "471 " + source + " " + channel + " :Cannot join channel (+l)"
 #define ERR_CANNOTSENDTOCHAN(source, channel)           "404 " + source + " " + channel + " :Cannot send to channel"
-#define ERR_CHANOPRIVSNEEDED(source, channel)           "482 " + source + " " + channel + " :You're not channel operator"
+#define ERR_CHANOPRIVSNEEDED(source, channel)           ":localhost 482 " + source + " " + channel + " : You're not a channel operator\r\n"
 
-#define ERR_NOSUCHNICK(source, nickname)                "401 " + source + " " + nickname + " :No such nick/channel"
+#define ERR_NOSUCHNICK(source, nickname)                ":localhost 401 " + source + " " + nickname + " :No such nick/channel\r\n"
 #define ERR_USERNOTINCHANNEL(source, nickname, channel) ":localhost 441 " + source + " " + nickname + " " + channel + " :They aren't on that channel\r\n"
 
 
@@ -169,6 +170,9 @@ std::string removeExtraSpaces(const std::string& input);
 #define RPL_PING(source, token)                         ":" + source + " PONG :" + token
 #define RPL_PRIVMSG(source, target, message)            ":" + source + " PRIVMSG " + target + " :" + message + "\r\n"
 #define RPL_NOTICE(source, target, message)             ":" + source + " NOTICE " + target + " :" + message
+#define RPL_INVITE(source, target, channel)             ":localhost 341 " + source + " " + target + " " + channel + "\r\n"
+#define RPL_INVITED(source, target, channel)            ":" + source + " INVITE " + target + " " + channel + "\r\n"
+#define BROADCAST_INVITE(source, target, channel)       ":localhost 345 " + source + " " + channel + " " + target + " :test\r\n"
 #define RPL_QUIT(source, message)                       ":" + source + " QUIT :Quit: " + message + "\r\n"
 #define RPL_KICK(source, channel, target, reason)       ":" + source + " KICK " + channel + " " + target + " :" + reason + "\r\n"
 #define RPL_MODE(source, channel, modes, args)          ":" + source + " MODE " + channel + " " + modes + " " + args + "\r\n"

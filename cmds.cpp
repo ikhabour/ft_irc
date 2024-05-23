@@ -220,11 +220,10 @@ void    Server::Join(int fd, std::string cmd)
         client->addclientChannel(chname);
         // client->setChannel(chname);
         client->setJoinTime(chname, clock());
-        sendMsg(fd, RPL_JOIN(client->getNickname(), chname));
+        tmp->BroadcastResponse(true, fd, RPL_JOIN(client->getNickname(), chname));
         std::string users = tmp->getClients();
         tmp->sendUserList(users);
-        sendMsg(fd, RPL_TOPIC(client->getNickname(), chname, tmp->getTopic()));
-        ch_broadcast(client->getNickname(), fd, chname, "has joined your channel");
+        tmp->updateTopic(tmp->getTopic());
         return ;
     }
 }
@@ -256,7 +255,8 @@ void    Server::Leave(int fd, std::string cmd)
             msg = "Leaving";
         if (msg[0] == ':')
             msg.erase(msg.begin());
-        tmp->sendLeave(RPL_PART(client->getNickname(), chname, msg));
+        tmp->BroadcastResponse(true, fd, RPL_PART(client->getNickname(), chname, msg));
+        // tmp->sendLeave(RPL_PART(client->getNickname(), chname, msg));
         tmp->remove_client(client);
         std::string users = tmp->getClients();
         std::cout<<"Users : "<< users <<std::endl;
@@ -325,6 +325,12 @@ void    Server::privmsg(int fd, std::string cmd)
         if (to_msg)
         {
             sendMsg(to_msg->getFd(), RPL_PRIVMSG(client->getNickname(), to_msg->getNickname(), msg));
+            if (!client->isChatBoxOpen(user) && !to_msg->isChatBoxOpen(client->getNickname()))
+            {
+                sendMsg(fd, RPL_PRIVMSG(to_msg->getNickname(), client->getNickname(), ""));
+                client->addChatBox(user);
+                to_msg->addChatBox(client->getNickname());
+            }
             return ;
         }
         else
@@ -379,6 +385,9 @@ void    Server::topic(int fd, std::string cmd)
         }
         if (topic[0] == ':')
             topic.erase(topic.begin());
+        if (topic.empty() || only_spaces(topic))
+            topic = "No topic is set";
+        std::cout<<"Topic : ("<<topic + ')'<<std::endl;
         tmp->setTopic(topic);
         tmp->updateTopic(topic);
         return ;
@@ -423,6 +432,11 @@ void    Server::Kick(int fd, std::string cmd)
         Channel *tmp = Channel_exists(chname);
         if (tmp)
         {
+            if (!client->getOpStatus(chname))
+            {
+                sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
+                return ;
+            }
             Client* tg = srvFindClient(target);
             if (!tg)
             {
@@ -434,7 +448,8 @@ void    Server::Kick(int fd, std::string cmd)
             tg->removeclientChannel(chname);
             tg->removeFromMap(chname);
             tmp->assignNextOp(client);
-            tmp->sendKick(RPL_KICK(client->getNickname(), chname, target, reason));
+            tmp->BroadcastResponse(true, fd, RPL_KICK(client->getNickname(), chname, target, reason));
+            // tmp->sendKick(RPL_KICK(client->getNickname(), chname, target, reason));
             tmp->remove_client(tg);
             if (tg->getChannelsSize() == 0)
             {
@@ -457,6 +472,68 @@ void    Server::Kick(int fd, std::string cmd)
     else
     {
         sendMsg(fd, "Please use /kick on a channel window\n");
+        return ;
+    }
+}
+
+
+void    Server::Invite(int fd, std::string cmd)
+{
+    Client* client = getClient(fd);
+    cmd = cmd.substr(6);
+    if (cmd[0] && cmd[0] == ' ')
+        cmd.erase(cmd.begin());
+    std::vector<std::string> cmds = split_words(cmd);
+    std::string chname;
+    std::string target;
+    if (!cmds[0].empty())
+        target = cmds[0];
+    if (!cmds[1].empty())
+        chname = cmds[1];
+    if (chname != "localhost") // channel invite, not from server tab
+    {
+        Channel *tmp = Channel_exists(chname);
+        if (tmp)
+        {
+            if (!client->getOpStatus(chname))
+            {
+                sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
+                return ;
+            }
+            Client* usr = srvFindClient(target);
+            if (usr)
+            {
+                if (usr->isOnChannel(chname))
+                {
+                    sendMsg(fd, ERR_USERONCHANNEL(target, chname, "is already on channel"));
+                    return ;
+                }
+                if (usr->isInvitedToChannel(chname))
+                {
+                    sendMsg(fd, ERR_USERONCHANNEL(target, chname, "is already invited to channel"));
+                    return;
+                }
+                usr->InvitetoChannel(chname);
+                sendMsg(fd, RPL_INVITE(client->getNickname(), usr->getNickname(), chname));
+                tmp->BroadcastResponse(false, fd, RPL_INVITED(client->getNickname(), target, chname));
+                sendMsg(usr->getFd(), RPL_INVITED(client->getNickname(), target, chname));
+                return ;
+            }
+            else
+            {
+                sendMsg(fd, ERR_NOSUCHNICK(client->getNickname(), target));
+                return ;
+            }
+        }
+        else
+        {
+            sendMsg(fd, ERR_NOSUCHCHANNEL(client->getNickname(), chname));
+            return ;
+        }
+    }
+    else
+    {
+        sendMsg(fd, "Usage : /invite <nickname> <channel>\n");
         return ;
     }
 }
