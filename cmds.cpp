@@ -73,28 +73,8 @@ std::vector<std::string> split_words(std::string& cmd)
             vec.push_back(cmd);
         }
     }
-    else
-    {
-        // pos = cmd.find_first_not_of(" ");
-        // if (pos != std::string::npos)
-        // {
-        //     cmd = cmd.substr(pos);
-        //     pos = cmd.find(" ");
-        //     if (pos != std::string::npos)
-        //     {
-        //         vec.push_back(cmd.substr(0, pos));
-        //         cmd = cmd.substr(pos);
-        //         pos = cmd.find_first_not_of(" ");
-        //         if (pos != std::string::npos)
-        //         {
-        //             cmd = cmd.substr(pos);
-        //             vec.push_back(cmd);
-        //         }
-        //     }
-        // }
-        // else
+    else if (!cmd.empty())
         vec.push_back(cmd);
-    }
     return vec;
 }
 
@@ -174,8 +154,15 @@ void    Server::Join(int fd, std::string cmd)
     Client* client = getClient(fd);
     std::string chname;
     std::string pw;
-    cmd = cmd.substr(5);
+    cmd = cmd.substr(4);
+    if (cmd[0] && cmd[0] == ' ')
+        cmd.erase(cmd.begin());
     std::vector<std::string> cmds = split_words(cmd);
+    if (!cmd.size())
+    {
+        sendMsg(fd, "Usage : /join <channel> <password if required>\n");
+        return ;
+    }
     chname = cmds[0];
     if (cmds.size() > 1)
         pw = cmds[1];
@@ -211,7 +198,7 @@ void    Server::Join(int fd, std::string cmd)
         Channel *tmp = Channel_exists(chname);
         if (!(tmp->getPass().empty()) && pw != tmp->getPass())
         {
-            sendMsg(fd, ":localhost 464 " + client->getNickname() + " :Password incorrect\r\n");
+            sendMsg(fd, ERR_PASSWDMISMATCH(client->getNickname()));
             return;
         }
         tmp->add_client(client);
@@ -239,10 +226,17 @@ void    Channel::PrintOperators()
 void    Server::Leave(int fd, std::string cmd)
 {
     Client* client = getClient(fd);
-    cmd = cmd.substr(5);
+    cmd = cmd.substr(4);
+    if (cmd[0] && cmd[0] == ' ')
+        cmd.erase(cmd.begin());
     std::vector<std::string> cmds = split_words(cmd);
     std::string chname;
     std::string msg;
+    if (!cmds.size())
+    {
+        sendMsg(fd, "Usage : /invite <nickname> <channel>\n");
+        return ;
+    }
     chname = cmds[0];
     msg = cmds[1];
     Channel *tmp = Channel_exists(chname);
@@ -324,6 +318,7 @@ void    Server::privmsg(int fd, std::string cmd)
         Client *to_msg = srvFindClient(user);
         if (to_msg)
         {
+            std::cout<<"msg : "<<msg<<std::endl;
             sendMsg(to_msg->getFd(), RPL_PRIVMSG(client->getNickname(), to_msg->getNickname(), msg));
             if (!client->isChatBoxOpen(user) && !to_msg->isChatBoxOpen(client->getNickname()))
             {
@@ -363,11 +358,15 @@ void    Server::list(int fd, std::string cmd)
 void    Server::topic(int fd, std::string cmd)
 {
     Client *client = getClient(fd);
-    (void)client;
     cmd = cmd.substr(5);
     if (cmd[0] && cmd[0] == ' ')
         cmd.erase(cmd.begin());
     std::vector<std::string> cmds = split_words(cmd);
+    if (!cmds.size())
+    {
+        sendMsg(fd, "Usage : /topic <channel> <topic to set>\n");
+        return ;
+    }
     std::string chname;
     std::string topic;
 
@@ -407,6 +406,11 @@ void    Server::Kick(int fd, std::string cmd)
         cmd.erase(cmd.begin());
     std::string chname;
     std::vector<std::string> cmds = split_words(cmd);
+    if (!cmd.size())
+    {
+        sendMsg(fd, "Usage : /kick <nickname> <reason (optional)>\n");
+        return ;
+    }
     if (!cmds[0].empty())
         chname = cmds[0];
     if (!cmds[1].empty())
@@ -425,7 +429,10 @@ void    Server::Kick(int fd, std::string cmd)
     if (!cmds[1].empty())
     {
         reason = cmds[1];
-        reason.erase(reason.begin());
+        if (reason == target)
+            reason = "No reason";
+        else
+            reason.erase(reason.begin());
     }
     if (chname != "localhost") // command sent from a channel
     {
@@ -486,6 +493,13 @@ void    Server::Invite(int fd, std::string cmd)
     std::vector<std::string> cmds = split_words(cmd);
     std::string chname;
     std::string target;
+    for (size_t i = 0; i < cmds.size(); i++)
+        std::cout<<"elm : ("<< cmds[i] + ')'<<std::endl;
+    if (!cmds.size())
+    {
+        sendMsg(fd, "Usage : /invite <nickname> <channel>\n");
+        return ;
+    }
     if (!cmds[0].empty())
         target = cmds[0];
     if (!cmds[1].empty())
