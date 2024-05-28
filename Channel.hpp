@@ -26,6 +26,7 @@ class Channel
 
         void setName(std::string& Name);
         void setPass(std::string Password);
+        void clearPass();
         void setLimit(int lim);
         void setTopic(std::string& Topic);
         void restrictTopic(bool status);

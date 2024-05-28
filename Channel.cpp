@@ -164,3 +164,8 @@ void   Channel::BroadcastResponse(bool toall, int excep, std::string response)
             sendMsg((*it)->getFd(), response);
     }
 }
+
+void    Channel::clearPass()
+{
+    this->_password.clear();
+}

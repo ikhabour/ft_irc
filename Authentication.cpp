@@ -66,7 +66,12 @@ bool Server::nickNameInUse(std::string& nickname)
 void Server::Nickname(int fd, std::string cmd)
 {
 	Client *client = getClient(fd);
-	cmd = cmd.substr(5);
+	cmd = cmd.substr(4);
+	if (only_spaces(cmd))
+	{
+		sendMsg(fd, "Please enter a proper nickname\n");
+		return ;
+	}
 	size_t pos = cmd.find_first_not_of(" \t\v");
 	if (pos < cmd.size())
 		cmd = cmd.substr(pos);
@@ -102,7 +107,12 @@ void Server::Nickname(int fd, std::string cmd)
 void Server::Username(int fd, std::string cmd)
 {
 	Client *client = getClient(fd);
-	cmd = cmd.substr(5);
+	cmd = cmd.substr(4);
+	if (only_spaces(cmd))
+	{
+		sendMsg(fd, "Please enter a proper username\n");
+		return ;
+	}
 	std::vector<std::string> cmds = split_cmd(cmd);
 	if (!client->getLog())
 	{

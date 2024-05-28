@@ -98,6 +98,8 @@ class Server
 
         void    Kick(int fd, std::string cmd);
         void    Invite(int fd, std::string cmd);
+        void    Mode(int fd, std::string cmd);
+
 
 
         /*      Utils       */
@@ -113,6 +115,7 @@ class Server
 void sendMsg(int fd, std::string msg);
 std::vector<std::string> split_words(std::string& cmd);
 std::string removeExtraSpaces(const std::string& input);
+bool    only_spaces(std::string str);
 
 
 
@@ -135,7 +138,7 @@ std::string removeExtraSpaces(const std::string& input);
 #define ERR_USERONCHANNEL(target, channel, msg)         ":0.0.0.0 443 " + target + " " + channel + " : " + target + " " + msg + "\r\n"
 
 #define ERR_UNKNOWNCOMMAND(source, command)             "421 " + source + " " + command + " :Unknown command"
-#define ERR_NEEDMOREPARAMS(source, command)             "461 " + source + " " + command + " :Not enough parameters"
+#define ERR_NEEDMOREPARAMS(source, command)             ":0.0.0.0 461 " + source + " " + command + " :Not enough parameters\n"
 
 #define ERR_TOOMANYCHANNELS(source, channel)            "405 " + source + " " + channel + " :You have joined too many channels"
 #define ERR_NOTONCHANNEL(source, channel)               "442 " + source + " " + channel + " :You're not on that channel"

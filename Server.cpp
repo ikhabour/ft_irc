@@ -110,6 +110,8 @@ void Server::parse_cmd(int fd, std::string cmd)
             Kick(fd, cmd);
         if (vec.size() && (vec[0] == "INVITE" || vec[0] == "invite"))
             Invite(fd, cmd);
+        if (vec.size() && (vec[0] == "MODE" || vec[0] == "mode"))
+            Mode(fd, cmd);
     }
     else
     {

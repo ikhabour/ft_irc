@@ -13,7 +13,10 @@ bool isalphanumeric(std::string str)
 Channel* Server::Channel_exists(std::string chname)
 {
     if (_channels.size() == 0)
+    {
+        std::cout<<"returned NULL"<<std::endl;
         return NULL;
+    }
     for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); it++)
     {
         Channel *tmp = *it;
@@ -58,9 +61,19 @@ void    Server::ch_broadcast(std::string user_nick, int excep, std::string chnam
     }
 }
 
+bool    only_spaces(std::string str)
+{
+    size_t pos = str.find_first_not_of(" \t\v");
+    if (pos != std::string::npos)
+        return false;
+    return true;
+}
+
 std::vector<std::string> split_words(std::string& cmd)
 {
     std::vector<std::string> vec;
+    if (cmd.empty() || only_spaces(cmd))
+        return vec;
     size_t pos = cmd.find(" ");
     if (pos != std::string::npos)
     {
@@ -78,13 +91,6 @@ std::vector<std::string> split_words(std::string& cmd)
     return vec;
 }
 
-bool    only_spaces(std::string str)
-{
-    size_t pos = str.find_first_not_of(" \t\v");
-    if (pos != std::string::npos)
-        return false;
-    return true;
-}
 
 Client* Server::srvFindClient(std::string nickname)
 {
@@ -158,7 +164,7 @@ void    Server::Join(int fd, std::string cmd)
     if (cmd[0] && cmd[0] == ' ')
         cmd.erase(cmd.begin());
     std::vector<std::string> cmds = split_words(cmd);
-    if (!cmd.size())
+    if (!cmds.size())
     {
         sendMsg(fd, "Usage : /join <channel> <password if required>\n");
         return ;
@@ -234,7 +240,7 @@ void    Server::Leave(int fd, std::string cmd)
     std::string msg;
     if (!cmds.size())
     {
-        sendMsg(fd, "Usage : /invite <nickname> <channel>\n");
+        sendMsg(fd, "Usage : /part <channel> <message (optional)>\n");
         return ;
     }
     chname = cmds[0];
@@ -269,7 +275,7 @@ void    Server::Leave(int fd, std::string cmd)
     }
     else
     {
-        sendMsg(fd, "This channel does not exists\n");
+        sendMsg(fd, ERR_NOSUCHCHANNEL(client->getNickname(), chname));
         return ;
     }
 }
@@ -318,7 +324,6 @@ void    Server::privmsg(int fd, std::string cmd)
         Client *to_msg = srvFindClient(user);
         if (to_msg)
         {
-            std::cout<<"msg : "<<msg<<std::endl;
             sendMsg(to_msg->getFd(), RPL_PRIVMSG(client->getNickname(), to_msg->getNickname(), msg));
             if (!client->isChatBoxOpen(user) && !to_msg->isChatBoxOpen(client->getNickname()))
             {
@@ -372,14 +377,19 @@ void    Server::topic(int fd, std::string cmd)
 
     if (!cmds[0].empty())
         chname = cmds[0];
-    if (!cmds[1].empty())
+    if (cmds.size() > 1 && !cmds[1].empty())
         topic = cmds[1];
     Channel *tmp = Channel_exists(chname);
     if (tmp)
     {
+        if (!client->getOpStatus(chname))
+        {
+            sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
+            return ;
+        }
         if (topic.empty())
         {
-            sendMsg(fd, "Usage : /topic <channel> <topic>\n");
+            sendMsg(fd, RPL_TOPIC(client->getNickname(), chname, tmp->getName()));
             return ;
         }
         if (topic[0] == ':')
@@ -406,17 +416,25 @@ void    Server::Kick(int fd, std::string cmd)
         cmd.erase(cmd.begin());
     std::string chname;
     std::vector<std::string> cmds = split_words(cmd);
-    if (!cmd.size())
+    if (!cmds.size())
     {
         sendMsg(fd, "Usage : /kick <nickname> <reason (optional)>\n");
         return ;
     }
+
     if (!cmds[0].empty())
         chname = cmds[0];
-    if (!cmds[1].empty())
-        cmds = split_words(cmds[1]);
+    if (cmds.size() > 1 && !cmds[1].empty())
+        cmds = split_words(cmds[1]);    
+    if (cmds[0] == chname)
+    {
+        sendMsg(fd, "Usage : /kick <nickname> <reason (optional)>\n");
+        return ;
+    }
     std::string target;
     std::string reason;
+
+
     if (!cmds[0].empty())
     {
         target = cmds[0];
@@ -493,8 +511,6 @@ void    Server::Invite(int fd, std::string cmd)
     std::vector<std::string> cmds = split_words(cmd);
     std::string chname;
     std::string target;
-    for (size_t i = 0; i < cmds.size(); i++)
-        std::cout<<"elm : ("<< cmds[i] + ')'<<std::endl;
     if (!cmds.size())
     {
         sendMsg(fd, "Usage : /invite <nickname> <channel>\n");
@@ -550,4 +566,173 @@ void    Server::Invite(int fd, std::string cmd)
         sendMsg(fd, "Usage : /invite <nickname> <channel>\n");
         return ;
     }
+}
+
+bool    isvalidMode(std::string mode)
+{
+    if (mode.length() < 2 || mode.length() > 2)
+        return false;
+    if (mode[0] == '+' || mode[0] == '-')
+    {
+        if (mode[1] == 'l' || mode[1] == 't' || mode[1] == 'i' || mode[1] == 'k' || mode[1] == 'o')
+            return true;
+        else
+            return false;
+    }
+    return false;
+}
+
+bool    requiresParam(std::string mode)
+{
+    if (mode == "+o" || mode == "-o" || mode == "+k" || mode == "+l")
+        return true;
+    return false;
+}
+
+bool    isNumeric(std::string param)
+{
+    for (size_t i = 0; i < param.size(); i++)
+    {
+        if (!isdigit(param[i]))
+            return false;
+    }
+    return true;
+}
+
+void    Server::Mode(int fd, std::string cmd)
+{
+    Client *client = getClient(fd);
+    (void)client;
+    cmd = cmd.substr(4);
+    if (cmd[0] && cmd[0] == ' ')
+        cmd.erase(cmd.begin());
+    std::string chname;
+    std::string mode;
+    std::string param;
+    std::vector<std::string> cmds = split_cmd(cmd);
+    // for (size_t i = 0; i < cmds.size(); i++)
+    //     std::cout<<"elm : ("<<cmds[i] + ')'<<std::endl;
+    if (cmds.size())
+    {
+        chname = cmds[0];
+        if (cmds.size() > 1)
+            mode = cmds[1];
+    }
+    if (chname.empty())
+    {
+        sendMsg(fd, "Usage : /mode <channel> <mode> <3rd parameter (if required)>\n");
+        return ;
+    }
+    else
+        return ;
+    if (!isvalidMode(mode))
+    {
+        sendMsg(fd, "Invalid mode, please use one of these modes : i | l | t | o | k\n");
+        return ;
+    }
+    if (requiresParam(mode))
+    {
+        if (cmds.size() > 2)
+            param = cmds[2];
+        else
+        {
+            sendMsg(fd, "Usage : /mode <channel> <mode> <3rd parameter>\n");
+            return ;
+        }
+    }
+
+    Channel *tmp = Channel_exists(chname);
+    if (tmp)
+    {
+        if (!isvalidMode(mode))
+        {
+            sendMsg(fd, "Invalid mode, please use one of these modes : i | l | t | o | k\n");
+            return ;
+        }
+        if (mode == "+k")
+        {
+            tmp->setPass(param);
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+k", param));
+            return ;
+        }
+        else if (mode == "-k")
+        {
+            tmp->clearPass();
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-k", param));
+            return ;
+        }
+        else if (mode == "+l")
+        {
+            if (!isNumeric(param))
+            {
+                sendMsg(fd, "Error : Limit must be a number\n");
+                return ;
+            }
+            tmp->setLimit(std::atoi(param.c_str()));
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+l", param));
+            return ;
+        }
+        else if (mode == "-l")
+        {
+            tmp->setLimit(-1);
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-l", param));
+            return ;
+        }
+        else if (mode == "+i")
+        {
+            tmp->setInviteOnly(true);
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+i", param));
+        }
+        else if (mode == "-i")
+        {
+            tmp->setInviteOnly(false);
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-i", param));
+        }
+        else if (mode == "+o")
+        {
+            Client *target = srvFindClient(param);
+            if (target)
+            {
+                tmp->setOperator(client, client);
+                tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+o", param));
+            }
+            else
+            {
+                sendMsg(fd, ERR_NOSUCHNICK(client->getNickname(), param));
+                return ;
+            }
+        }
+        else if (mode == "-o")
+        {
+            Client *target = srvFindClient(param);
+            if (target)
+            {
+                tmp->removeOperator(param);
+                tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-o", param));
+            }
+               else
+            {
+                sendMsg(fd, ERR_NOSUCHNICK(client->getNickname(), param));
+                return ;
+            }
+        }
+        else if (mode == "+t")
+        {
+            tmp->restrictTopic(true);
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+t", param));
+            return ;
+        }
+        else if (mode == "-t")
+        {
+            tmp->restrictTopic(false);
+            tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-t", param));
+            return ;
+        }
+    }
+    else
+    {
+        sendMsg(fd, ERR_NOSUCHCHANNEL(client->getNickname(), chname));
+        return ;
+    }
+
 }
