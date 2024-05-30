@@ -207,6 +207,21 @@ void    Server::Join(int fd, std::string cmd)
             sendMsg(fd, ERR_PASSWDMISMATCH(client->getNickname()));
             return;
         }
+        else if (tmp->chLimited()) // channel is limited
+        {
+            if (tmp->getVecSize() >= tmp->getLimit())
+            {
+                sendMsg(fd, "Channel is full\n");
+                return ;
+            }
+            else
+                tmp->setLimit(tmp->getLimit() + 1);
+        }
+        else if (tmp->getInviteStatus() && !client->isInvitedToChannel(chname)) // Channel is invite Only
+        {
+            sendMsg(fd, "You are not invited to this channel\n");
+            return ;
+        }
         tmp->add_client(client);
         if (!client->getChannelsSize())
             client->setChStatus(true);
@@ -259,6 +274,8 @@ void    Server::Leave(int fd, std::string cmd)
         tmp->BroadcastResponse(true, fd, RPL_PART(client->getNickname(), chname, msg));
         // tmp->sendLeave(RPL_PART(client->getNickname(), chname, msg));
         tmp->remove_client(client);
+        if (tmp->chLimited() && tmp->getLimit())
+            tmp->setLimit(tmp->getLimit() - 1);
         std::string users = tmp->getClients();
         client->removeclientChannel(chname);
         if (client->getChannelsSize() == 0)
@@ -266,7 +283,6 @@ void    Server::Leave(int fd, std::string cmd)
             client->setChStatus(false);
             client->emptyChannel();
         }
-
         // tmp->PrintOperators();
         tmp->sendUserList(users);
         if (tmp->getVecSize() == 0)
@@ -396,7 +412,11 @@ void    Server::topic(int fd, std::string cmd)
             topic.erase(topic.begin());
         if (topic.empty() || only_spaces(topic))
             topic = "No topic is set";
-        std::cout<<"Topic : ("<<topic + ')'<<std::endl;
+        if (tmp->getTopicStatus() && !client->getOpStatus(chname))
+        {
+            sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
+            return ;
+        }
         tmp->setTopic(topic);
         tmp->updateTopic(topic);
         return ;
@@ -602,7 +622,6 @@ bool    isNumeric(std::string param)
 void    Server::Mode(int fd, std::string cmd)
 {
     Client *client = getClient(fd);
-    (void)client;
     cmd = cmd.substr(4);
     if (cmd[0] && cmd[0] == ' ')
         cmd.erase(cmd.begin());
@@ -610,8 +629,6 @@ void    Server::Mode(int fd, std::string cmd)
     std::string mode;
     std::string param;
     std::vector<std::string> cmds = split_cmd(cmd);
-    // for (size_t i = 0; i < cmds.size(); i++)
-    //     std::cout<<"elm : ("<<cmds[i] + ')'<<std::endl;
     if (cmds.size())
     {
         chname = cmds[0];
@@ -623,7 +640,7 @@ void    Server::Mode(int fd, std::string cmd)
         sendMsg(fd, "Usage : /mode <channel> <mode> <3rd parameter (if required)>\n");
         return ;
     }
-    else
+    else if (!chname.empty() && mode.empty())
         return ;
     if (!isvalidMode(mode))
     {
@@ -644,6 +661,11 @@ void    Server::Mode(int fd, std::string cmd)
     Channel *tmp = Channel_exists(chname);
     if (tmp)
     {
+        if (!client->getOpStatus(chname))
+        {
+            sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
+            return ;
+        }
         if (!isvalidMode(mode))
         {
             sendMsg(fd, "Invalid mode, please use one of these modes : i | l | t | o | k\n");
@@ -668,13 +690,25 @@ void    Server::Mode(int fd, std::string cmd)
                 sendMsg(fd, "Error : Limit must be a number\n");
                 return ;
             }
+            else if (std::atoi(param.c_str()) <= 0)
+            {
+                sendMsg(fd, "Error : Limit must be a positive number\n");
+                return ;
+            }
+            else if ((size_t)std::atoi(param.c_str()) < tmp->getVecSize())
+            {
+                sendMsg(fd, "Error : Limit must be greater than or equal to the current connected users\n");
+                return ;
+            }
+            tmp->LimitChannel(true);
             tmp->setLimit(std::atoi(param.c_str()));
             tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+l", param));
             return ;
         }
         else if (mode == "-l")
         {
-            tmp->setLimit(-1);
+            tmp->LimitChannel(false);
+            tmp->setLimit(0);
             tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-l", param));
             return ;
         }
@@ -693,8 +727,15 @@ void    Server::Mode(int fd, std::string cmd)
             Client *target = srvFindClient(param);
             if (target)
             {
-                tmp->setOperator(client, client);
+                if (target->getOpStatus(chname))
+                {
+                    sendMsg(fd, "This user is already an operator\n");
+                    return ;
+                }
+                tmp->setOperator(client, target);
                 tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+o", param));
+                std::string users = tmp->getClients();
+                tmp->sendUserList(users);
             }
             else
             {
@@ -707,8 +748,15 @@ void    Server::Mode(int fd, std::string cmd)
             Client *target = srvFindClient(param);
             if (target)
             {
+                if (!target->getOpStatus(chname))
+                {
+                    sendMsg(fd, "This user is not an operator\n");
+                    return ;
+                }
                 tmp->removeOperator(param);
                 tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "-o", param));
+                std::string users = tmp->getClients();
+                tmp->sendUserList(users);
             }
                else
             {

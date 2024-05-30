@@ -44,7 +44,7 @@ std::string Channel::getTopic() const
     return this->_topic;
 }
 
-int Channel::getLimit() const
+size_t Channel::getLimit() const
 {
     return this->_l;
 }
@@ -168,4 +168,15 @@ void   Channel::BroadcastResponse(bool toall, int excep, std::string response)
 void    Channel::clearPass()
 {
     this->_password.clear();
+}
+
+
+void    Channel::LimitChannel(bool status)
+{
+    this->isLimited = status;
+}
+
+bool    Channel::chLimited()
+{
+    return this->isLimited;
 }

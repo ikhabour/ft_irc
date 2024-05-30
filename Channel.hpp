@@ -13,7 +13,8 @@ class Channel
         std::string _topic;
         bool _i;
         bool _t;
-        int _l;
+        bool isLimited;
+        size_t _l;
         std::vector<Client *> _clients;
         std::vector<Client *> admins;
     public :
@@ -33,13 +34,14 @@ class Channel
         void setInviteOnly(bool status);
         void setOperator(Client* client, Client* target);
         void removeOperator(std::string nickname);
+        void LimitChannel(bool status);
 
         /*    Getters     */
         
         std::string getName() const;
         std::string getPass() const;
         std::string getTopic() const;
-        int getLimit() const;
+        size_t getLimit() const;
         bool    getInviteStatus();
         bool    getTopicStatus();
         size_t  getVecSize();
@@ -55,6 +57,7 @@ class Channel
         void    assignNextOp(Client* target);
         void    chsendMsg(std::string msg);
         std::string getClients();
+        bool    chLimited();
 
         /* Broadcast responses  */
 
