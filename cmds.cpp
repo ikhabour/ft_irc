@@ -155,6 +155,19 @@ void    Channel::sendUserList(std::string users)
     }
 }
 
+bool    ValidChannelName(std::string chname)
+{
+    if (chname.empty())
+        return false;
+    else if ((chname[0] == '#' || chname[0] == '&') && !isalphanumeric(chname.substr(1)))
+        return false;
+    else if (chname.length() == 1 && (chname[0] == '&' || chname[0] == '#'))
+        return false;
+    else if (chname[0] != '#' && chname[0] != '&')
+        return false;
+    return true;
+}
+
 void    Server::Join(int fd, std::string cmd)
 {
     Client* client = getClient(fd);
@@ -172,16 +185,21 @@ void    Server::Join(int fd, std::string cmd)
     chname = cmds[0];
     if (cmds.size() > 1)
         pw = cmds[1];
-    if (chname.empty())
+    if (!ValidChannelName(chname))
     {
-        sendMsg(fd, "Please provide a channel name\n");
+        sendMsg(fd, "Invalid Channel Name\n");
         return ;
     }
-    if (chname[0] != '#' && chname[0] != '&')
-    {
-        sendMsg(fd, "Channel name must start with \'#\' or \'&\'\n");
-        return ;
-    }
+    // if (chname.empty())
+    // {
+    //     sendMsg(fd, "Please provide a channel name\n");
+    //     return ;
+    // }
+    // if (chname[0] != '#' && chname[0] != '&')
+    // {
+    //     sendMsg(fd, "Channel name must start with \'#\' or \'&\'\n");
+    //     return ;
+    // }
     if (!Channel_exists(chname))
     {
         Channel *tmp = makeChannel(client, chname, pw);
@@ -259,6 +277,11 @@ void    Server::Leave(int fd, std::string cmd)
         return ;
     }
     chname = cmds[0];
+    if (!ValidChannelName(chname))
+    {
+        sendMsg(fd, "Invalid channel name\n");
+        return ;
+    }
     msg = cmds[1];
     Channel *tmp = Channel_exists(chname);
     if (tmp)
@@ -324,6 +347,11 @@ void    Server::privmsg(int fd, std::string cmd)
     msg = cmds[1];
     if (!chname.empty())
     {
+        if (!ValidChannelName(chname))
+        {
+            sendMsg(fd, "Invalid channel name\n");
+            return ;
+        }
         if (msg[0] == ':')
             msg.erase(msg.begin());
         ch_broadcast(client->getNickname(), fd, chname, msg);
@@ -393,19 +421,24 @@ void    Server::topic(int fd, std::string cmd)
 
     if (!cmds[0].empty())
         chname = cmds[0];
+    if (!ValidChannelName(chname))
+    {
+        sendMsg(fd, "Invalid channel name\n");
+        return ;
+    }
     if (cmds.size() > 1 && !cmds[1].empty())
         topic = cmds[1];
     Channel *tmp = Channel_exists(chname);
     if (tmp)
     {
-        if (!client->getOpStatus(chname))
-        {
-            sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
-            return ;
-        }
         if (topic.empty())
         {
-            sendMsg(fd, RPL_TOPIC(client->getNickname(), chname, tmp->getName()));
+            sendMsg(fd, RPL_TOPIC(client->getNickname(), chname, tmp->getTopic()));
+            return ;
+        }
+        if (!client->getOpStatus(chname) && tmp->getTopicStatus())
+        {
+            sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
             return ;
         }
         if (topic[0] == ':')
@@ -474,6 +507,11 @@ void    Server::Kick(int fd, std::string cmd)
     }
     if (chname != "localhost") // command sent from a channel
     {
+        if (!ValidChannelName(chname))
+        {
+            sendMsg(fd, "Invalid channel name\n");
+            return ;
+        }
         Channel *tmp = Channel_exists(chname);
         if (tmp)
         {
@@ -542,6 +580,11 @@ void    Server::Invite(int fd, std::string cmd)
         chname = cmds[1];
     if (chname != "localhost") // channel invite, not from server tab
     {
+        if (!ValidChannelName(chname))
+        {
+            sendMsg(fd, "Invalid channel name\n");
+            return ;
+        }
         Channel *tmp = Channel_exists(chname);
         if (tmp)
         {
@@ -657,18 +700,17 @@ void    Server::Mode(int fd, std::string cmd)
             return ;
         }
     }
-
+    if (!ValidChannelName(chname))
+    {
+        sendMsg(fd, "Invalid channel name\n");
+        return ;
+    }
     Channel *tmp = Channel_exists(chname);
     if (tmp)
     {
         if (!client->getOpStatus(chname))
         {
             sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
-            return ;
-        }
-        if (!isvalidMode(mode))
-        {
-            sendMsg(fd, "Invalid mode, please use one of these modes : i | l | t | o | k\n");
             return ;
         }
         if (mode == "+k")
@@ -727,7 +769,12 @@ void    Server::Mode(int fd, std::string cmd)
             Client *target = srvFindClient(param);
             if (target)
             {
-                if (target->getOpStatus(chname))
+                if (!target->isOnChannel(chname))
+                {
+                    sendMsg(fd, ERR_USERNOTINCHANNEL(client->getNickname(), param, chname));
+                    return ;
+                }
+                else if (target->getOpStatus(chname))
                 {
                     sendMsg(fd, "This user is already an operator\n");
                     return ;
@@ -748,7 +795,12 @@ void    Server::Mode(int fd, std::string cmd)
             Client *target = srvFindClient(param);
             if (target)
             {
-                if (!target->getOpStatus(chname))
+                if (!target->isOnChannel(chname))
+                {
+                    sendMsg(fd, ERR_USERNOTINCHANNEL(client->getNickname(), param, chname));
+                    return ;
+                }
+                else if (!target->getOpStatus(chname))
                 {
                     sendMsg(fd, "This user is not an operator\n");
                     return ;
@@ -782,5 +834,4 @@ void    Server::Mode(int fd, std::string cmd)
         sendMsg(fd, ERR_NOSUCHCHANNEL(client->getNickname(), chname));
         return ;
     }
-
-}
+}   

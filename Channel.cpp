@@ -67,9 +67,10 @@ void Channel::setPass(std::string Password)
 void    Channel::setOperator(Client* client, Client* target)
 {
     target->setOpStatus(this->getName(), true);
+    (void)client;
     // :nickname!username@hostname MODE #channelname +o targetnickname
-    std::string msg = RPL_MODE(client->getNickname(), this->getName(), "+o", target->getNickname());
-    this->sendMode(msg);
+    // std::string msg = RPL_MODE(client->getNickname(), this->getName(), "+o", target->getNickname());
+    // this->sendMode(msg);
     admins.push_back(target);
 }
 

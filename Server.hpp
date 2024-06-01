@@ -149,7 +149,7 @@ bool    only_spaces(std::string str);
 #define ERR_CHANOPRIVSNEEDED(source, channel)           ":0.0.0.0 482 " + source + " " + channel + " : You're not a channel operator\r\n"
 
 #define ERR_NOSUCHNICK(source, nickname)                ":0.0.0.0 401 " + source + " " + nickname + " :No such nick/channel\r\n"
-#define ERR_USERNOTINCHANNEL(source, nickname, channel) ":0.0.0.0 441 " + source + " " + nickname + " " + channel + " :They aren't on that channel\r\n"
+#define ERR_USERNOTINCHANNEL(source, nickname, channel) ":0.0.0.0 441 " + source + " " + nickname + " " + channel + " :They aren't on that channel\r\n" 
 
 
 /* Numeric Responses */
