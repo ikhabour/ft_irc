@@ -683,8 +683,23 @@ void    Server::Mode(int fd, std::string cmd)
         sendMsg(fd, "Usage : /mode <channel> <mode> <3rd parameter (if required)>\n");
         return ;
     }
-    else if (!chname.empty() && mode.empty())
+    if (!ValidChannelName(chname))
+    {
+        sendMsg(fd, "Invalid channel name\n");
         return ;
+    }
+    Channel *tmp = Channel_exists(chname);
+    if (tmp)
+    {
+        if (!chname.empty() && mode.empty())
+        {
+            std::string modes = tmp->getChannelModes();
+            if (modes == "+")
+                modes.clear();
+            sendMsg(fd, RPL_CHANNELMODEIS(client->getNickname(), chname, modes));
+            return ;
+        }
+    }
     if (!isvalidMode(mode))
     {
         sendMsg(fd, "Invalid mode, please use one of these modes : i | l | t | o | k\n");
@@ -700,14 +715,13 @@ void    Server::Mode(int fd, std::string cmd)
             return ;
         }
     }
-    if (!ValidChannelName(chname))
-    {
-        sendMsg(fd, "Invalid channel name\n");
-        return ;
-    }
-    Channel *tmp = Channel_exists(chname);
     if (tmp)
     {
+        // if (mode.empty())
+        // {
+        //     std::cout<<"Was here\n";
+        //     return ;
+        // }
         if (!client->getOpStatus(chname))
         {
             sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));

@@ -179,5 +179,6 @@ bool    only_spaces(std::string str);
 #define RPL_QUIT(source, message)                       ":" + source + " QUIT :Quit: " + message + "\r\n"
 #define RPL_KICK(source, channel, target, reason)       ":" + source + " KICK " + channel + " " + target + " :" + reason + "\r\n"
 #define RPL_MODE(source, channel, modes, args)          ":" + source + " MODE " + channel + " " + modes + " " + args + "\r\n"
+#define RPL_CHANNELMODEIS(source, channel, modes)       ":0.0.0.0 324 " + source + " " + channel + " " + modes +"\r\n"
 
 #endif

@@ -48,6 +48,7 @@ class Channel
         int isOperator(Client* client);
         size_t getOpVecSize();
         Client* find_client(std::string username);
+        std::string getChannelModes();
 
 
         /*      Others      */

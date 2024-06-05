@@ -181,3 +181,17 @@ bool    Channel::chLimited()
 {
     return this->isLimited;
 }
+
+std::string Channel::getChannelModes()
+{
+    std::string modes = "+";
+    if (_t)
+        modes += "t";
+    if (_i)
+        modes += "i";
+    if (isLimited)
+        modes += "l";
+    if (!_password.empty())
+        modes += "k";
+    return modes;
+}
