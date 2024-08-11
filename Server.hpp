@@ -118,6 +118,13 @@ std::string removeExtraSpaces(const std::string& input);
 bool    only_spaces(std::string str);
 
 
+//                      Helper Functions                        //
+
+bool    ValidChannelName(std::string chname);
+bool    isvalidMode(std::string mode);
+bool    requiresParam(std::string mode);
+bool    isNumeric(std::string param);
+
 
 
 
@@ -141,7 +148,7 @@ bool    only_spaces(std::string str);
 #define ERR_NEEDMOREPARAMS(source, command)             ":0.0.0.0 461 " + source + " " + command + " :Not enough parameters\n"
 
 #define ERR_TOOMANYCHANNELS(source, channel)            "405 " + source + " " + channel + " :You have joined too many channels"
-#define ERR_NOTONCHANNEL(source, channel)               "442 " + source + " " + channel + " :You're not on that channel"
+#define ERR_NOTONCHANNEL(source, channel)               ":0.0.0.0 442 " + source + " " + channel + " :You're not on that channel"
 #define ERR_NOSUCHCHANNEL(source, channel)              ":0.0.0.0 403 " + source + " " + channel + " :No such channel\r\n"
 #define ERR_BADCHANNELKEY(source, channel)              "475 " + source + " " + channel + " :Cannot join channel (+k)"
 #define ERR_CHANNELISFULL(source, channel)              "471 " + source + " " + channel + " :Cannot join channel (+l)"
