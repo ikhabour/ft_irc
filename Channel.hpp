@@ -32,7 +32,7 @@ class Channel
         void setTopic(std::string& Topic);
         void restrictTopic(bool status);
         void setInviteOnly(bool status);
-        void setOperator(Client* client, Client* target);
+        void setOperator(Client* target);
         void removeOperator(std::string nickname);
         void LimitChannel(bool status);
 
@@ -55,8 +55,7 @@ class Channel
 
         void    add_client(Client* client);
         void    remove_client(Client* client);
-        void    assignNextOp(Client* target);
-        void    chsendMsg(std::string msg);
+        void    assignNextOp();
         std::string getClients();
         bool    chLimited();
 
@@ -69,5 +68,4 @@ class Channel
         void    sendMode(std::string msg);
 
 
-        void    PrintOperators();
 };

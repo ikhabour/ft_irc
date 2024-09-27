@@ -56,11 +56,6 @@ void    Server::Mode(int fd, std::string cmd)
     }
     if (tmp)
     {
-        // if (mode.empty())
-        // {
-        //     std::cout<<"Was here\n";
-        //     return ;
-        // }
         if (!client->getOpStatus(chname))
         {
             sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
@@ -132,7 +127,7 @@ void    Server::Mode(int fd, std::string cmd)
                     sendMsg(fd, "This user is already an operator\n");
                     return ;
                 }
-                tmp->setOperator(client, target);
+                tmp->setOperator(target);
                 tmp->BroadcastResponse(true, fd, RPL_MODE(client->getNickname(), chname, "+o", param));
                 std::string users = tmp->getClients();
                 tmp->sendUserList(users);

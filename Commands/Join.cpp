@@ -22,32 +22,21 @@ void    Server::Join(int fd, std::string cmd)
         sendMsg(fd, "Invalid Channel Name\n");
         return ;
     }
-    // if (chname.empty())
-    // {
-    //     sendMsg(fd, "Please provide a channel name\n");
-    //     return ;
-    // }
-    // if (chname[0] != '#' && chname[0] != '&')
-    // {
-    //     sendMsg(fd, "Channel name must start with \'#\' or \'&\'\n");
-    //     return ;
-    // }
     if (!Channel_exists(chname))
     {
         Channel *tmp = makeChannel(client, chname, pw);
         std::cout<<"Channel created"<<std::endl;
         tmp->add_client(client);
-        tmp->setOperator(client, client);
+        tmp->setOperator(client);
         client->addclientChannel(chname);
         client->setChStatus(true);
-        // client->setChannel(chname);
         client->setJoinTime(chname, clock());
-
         sendMsg(fd, RPL_JOIN(client->getNickname(), chname));
         std::string users = tmp->getClients();
         tmp->sendUserList(users);
         sendMsg(fd, RPL_TOPIC(client->getNickname(), chname, tmp->getTopic()));
         sendMsg(fd, RPL_CHANNELMODEIS(client->getNickname(), chname, ""));
+        std::cout<< GRE <<"USER : "<<client->getNickname()<<" created " << chname<<std::endl<< WHI;
         return ;
     }
     else
@@ -58,17 +47,17 @@ void    Server::Join(int fd, std::string cmd)
             sendMsg(fd, ERR_PASSWDMISMATCH(client->getNickname()));
             return;
         }
-        else if (tmp->chLimited()) // channel is limited
+        else if (tmp->chLimited())
         {
-            if (tmp->getVecSize() >= tmp->getLimit())
+            std::cout<<"yes its limited\n";
+            std::cout<<"vec size : "<<tmp->getVecSize()<<" limit : "<<tmp->getLimit()<<std::endl;
+            if (tmp->getVecSize() + 1 > tmp->getLimit())
             {
                 sendMsg(fd, "Channel is full\n");
                 return ;
             }
-            else
-                tmp->setLimit(tmp->getLimit() + 1);
         }
-        else if (tmp->getInviteStatus() && !client->isInvitedToChannel(chname)) // Channel is invite Only
+        else if (tmp->getInviteStatus() && !client->isInvitedToChannel(chname))
         {
             sendMsg(fd, "You are not invited to this channel\n");
             return ;
@@ -77,7 +66,6 @@ void    Server::Join(int fd, std::string cmd)
         if (!client->getChannelsSize())
             client->setChStatus(true);
         client->addclientChannel(chname);
-        // client->setChannel(chname);
         client->setJoinTime(chname, clock());
         tmp->BroadcastResponse(true, fd, RPL_JOIN(client->getNickname(), chname));
         std::string users = tmp->getClients();
@@ -87,6 +75,7 @@ void    Server::Join(int fd, std::string cmd)
         if (modes == "+")
             modes.clear();
         sendMsg(fd, RPL_CHANNELMODEIS(client->getNickname(), chname, modes));
+        std::cout<< GRE <<"USER : "<<client->getNickname()<<" joined " << chname<<std::endl<< WHI;
         return ;
     }
 }

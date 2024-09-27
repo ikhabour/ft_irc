@@ -12,8 +12,7 @@
 
 #include "Client.hpp"
 
-Client::Client(int sockfd, const std::string& ip) : fd(sockfd), ipAddress(ip), curr_channel(""),
-in_channel(false)
+Client::Client(int sockfd, const std::string& ip) : fd(sockfd), ipAddress(ip), in_channel(false)
 {
     loggedIn = false;
 }
@@ -169,20 +168,6 @@ size_t  Client::getChannelsSize()
     return this->clientChannels.size();
 }
 
-void    Client::setChannel(std::string chname)
-{
-    this->curr_channel = chname;
-}
-
-std::string Client::getChannel()
-{
-    return this->curr_channel;
-}
-void    Client::emptyChannel()
-{
-    this->curr_channel.clear();
-}
-
 bool    Client::isOnChannel(std::string chname)
 {
     std::vector<std::string>::iterator it;
@@ -198,23 +183,6 @@ bool    Client::isOnChannel(std::string chname)
 std::vector<std::string> Client::returnChannel()
 {
     return this->clientChannels;
-}
-
-
-bool    Client::isChatBoxOpen(std::string nickname)
-{
-    std::vector<std::string>::iterator it;
-    for (it = openChatBoxes.begin(); it != openChatBoxes.end(); it++)
-    {
-        if ((*it) == nickname)
-            return true;
-    }
-    return false;
-}
-
-void    Client::addChatBox(std::string nickname)
-{
-    openChatBoxes.push_back(nickname);
 }
 
 void    Client::InvitetoChannel(std::string chname)

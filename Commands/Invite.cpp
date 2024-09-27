@@ -50,6 +50,7 @@ void    Server::Invite(int fd, std::string cmd)
                 sendMsg(fd, RPL_INVITE(client->getNickname(), usr->getNickname(), chname));
                 tmp->BroadcastResponse(false, fd, RPL_INVITED(client->getNickname(), target, chname));
                 sendMsg(usr->getFd(), RPL_INVITED(client->getNickname(), target, chname));
+                std::cout<< RED<<"USER : "<<target<<" was invited to " << chname<<" by "<<client->getNickname()<<std::endl << WHI;
                 return ;
             }
             else

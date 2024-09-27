@@ -50,12 +50,6 @@ void    Server::privmsg(int fd, std::string cmd)
         if (to_msg)
         {
             sendMsg(to_msg->getFd(), RPL_PRIVMSG(client->getNickname(), to_msg->getNickname(), msg));
-            if (!client->isChatBoxOpen(user) && !to_msg->isChatBoxOpen(client->getNickname()))
-            {
-                sendMsg(fd, RPL_PRIVMSG(to_msg->getNickname(), client->getNickname(), ""));
-                client->addChatBox(user);
-                to_msg->addChatBox(client->getNickname());
-            }
             return ;
         }
         else

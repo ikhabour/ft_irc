@@ -20,7 +20,6 @@ void    Server::Leave(int fd, std::string cmd)
         sendMsg(fd, "Invalid channel name\n");
         return ;
     }
-    std::cout<<"test\n";
     if (cmds.size() > 1)
         msg = cmds[1];
     std::cout<<"msg "<<msg<<std::endl;
@@ -35,24 +34,20 @@ void    Server::Leave(int fd, std::string cmd)
         if (client->getOpStatus(chname))
             tmp->removeOperator(client->getNickname());
         client->removeFromMap(chname);
-        tmp->assignNextOp(client);
+        tmp->assignNextOp();
         if (only_spaces(msg))
             msg = "Leaving";
         if (msg[0] == ':')
             msg.erase(msg.begin());
         tmp->BroadcastResponse(true, fd, RPL_PART(client->getNickname(), chname, msg));
-        // tmp->sendLeave(RPL_PART(client->getNickname(), chname, msg));
+        std::cout<< RED <<"USER : "<<client->getNickname()<<" left " << chname<<std::endl << WHI;
         tmp->remove_client(client);
         if (tmp->chLimited())
             tmp->setLimit(tmp->getLimit() - 1);
         std::string users = tmp->getClients();
         client->removeclientChannel(chname);
         if (client->getChannelsSize() == 0)
-        {
             client->setChStatus(false);
-            client->emptyChannel();
-        }
-        // tmp->PrintOperators();
         tmp->sendUserList(users);
         if (tmp->getVecSize() == 0)
             deleteChannel(chname);

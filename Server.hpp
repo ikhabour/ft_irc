@@ -41,6 +41,8 @@
 #include <iterator>
 #include <limits>
 #include <cstdlib>
+#include <stdlib.h> 
+#include <time.h> 
 #include <map>
 #include "Client.hpp"
 #include "Channel.hpp"
@@ -92,6 +94,7 @@ class Server
         void    privmsg(int fd, std::string cmd);
         void    list(int fd, std::string cmd);
         void    topic(int fd, std::string cmd);
+        void    Bot(int fd, std::string cmd);
 
         /*      Operator Commands       */
 

@@ -1,6 +1,5 @@
 #include "../Server.hpp"
 
-
 void    Server::topic(int fd, std::string cmd)
 {
     Client *client = getClient(fd);
@@ -42,11 +41,6 @@ void    Server::topic(int fd, std::string cmd)
             topic.erase(topic.begin());
         if (topic.empty() || only_spaces(topic))
             topic = "No topic is set";
-        if (tmp->getTopicStatus() && !client->getOpStatus(chname))
-        {
-            sendMsg(fd, ERR_CHANOPRIVSNEEDED(client->getNickname(), chname));
-            return ;
-        }
         tmp->setTopic(topic);
         tmp->updateTopic(topic);
         return ;

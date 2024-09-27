@@ -70,18 +70,15 @@ void    Server::Kick(int fd, std::string cmd)
                 tmp->removeOperator(tg->getNickname());
             tg->removeclientChannel(chname);
             tg->removeFromMap(chname);
-            tmp->assignNextOp(client);
+            tmp->assignNextOp();
             tmp->BroadcastResponse(true, fd, RPL_KICK(client->getNickname(), chname, target, reason));
-            // tmp->sendKick(RPL_KICK(client->getNickname(), chname, target, reason));
             tmp->remove_client(tg);
             if (tg->getChannelsSize() == 0)
-            {
                 tg->setChStatus(false);
-                tg->emptyChannel();
-            }
             std::string users = tmp->getClients();
             tmp->sendUserList(users);
             sendMsg(tg->getFd(), RPL_PART(tg->getNickname(), chname, "Leaving"));
+            std::cout<< RED <<"USER : "<<target<<" was kicked from " << chname<<" by "<<client->getNickname()<<std::endl << WHI;
             if (tmp->getVecSize() == 0)
                 deleteChannel(chname);
             return ;

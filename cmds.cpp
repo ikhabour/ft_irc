@@ -44,8 +44,6 @@ void    Server::ch_broadcast(std::string user_nick, int excep, std::string chnam
     for (std::vector<Client*>::iterator it = clients.begin(); it != clients.end(); it++)
     {
         Client *tmp = *it;
-        // std::cout<<"chstatus  for "<< tmp->getNickname() <<" : "<<tmp->getChStatus()<<std::endl;
-        // std::cout<<"onChannel for "<< tmp->getNickname() <<" : "<<tmp->isOnChannel(chname)<<std::endl;
         if (tmp->getChStatus() && tmp->isOnChannel(chname) && tmp->getFd() != excep)
             sendMsg(tmp->getFd(), RPL_PRIVMSG(user_nick, chname, msg));
     }
@@ -93,7 +91,7 @@ Client* Server::srvFindClient(std::string nickname)
     return NULL;
 }
 
-void    Channel::assignNextOp(Client* target)
+void    Channel::assignNextOp()
 {
     if (getVecSize() == 0 || admins.size() >= 1)
         return ;
@@ -114,7 +112,7 @@ void    Channel::assignNextOp(Client* target)
         }
     }
     if (minTimeClient)
-        setOperator(target, minTimeClient);
+        setOperator(minTimeClient);
 }
 
 std::string Channel::getClients()
@@ -144,12 +142,4 @@ void    Channel::sendUserList(std::string users)
         sendMsg((*it)->getFd(), msg);
     }
 }
-
-void    Channel::PrintOperators()
-{
-    std::vector<Client*>::iterator it;
-    for (it = admins.begin(); it != admins.end(); it++)
-        std::cout<<"User : " << (*it)->getNickname() << " is an Operator on channel : "<<this->getName()<<std::endl;
-}
-
 

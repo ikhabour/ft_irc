@@ -34,6 +34,7 @@ void Server::signalHandler(int signum)
     sig = true;
 }
 
+
 void Server::SocketMaker() 
 {
     sockaddr_in Addr;
@@ -41,12 +42,12 @@ void Server::SocketMaker()
     if (srvSocketFd == -1)
         throw std::runtime_error("Error creating socket");
     int en = 1;
-    if (setsockopt(srvSocketFd, SOL_SOCKET, SO_REUSEADDR, &en, sizeof(en)) == -1)
+    if (setsockopt(srvSocketFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &en, sizeof(en)) == -1)
         throw std::runtime_error("Error setting socket option SO_REUSEADDR");
     if (fcntl(srvSocketFd, F_SETFL, O_NONBLOCK) == -1)
         throw std::runtime_error("Error setting socket to non-blocking mode");
     Addr.sin_family = AF_INET;
-    Addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    Addr.sin_addr.s_addr = INADDR_ANY;
     Addr.sin_port = htons(port);
     if (bind(srvSocketFd, (struct sockaddr *)&Addr, sizeof(Addr)) == -1)
         throw std::runtime_error("Error binding socket");
@@ -112,6 +113,8 @@ void Server::parse_cmd(int fd, std::string cmd)
             Invite(fd, cmd);
         if (vec.size() && (vec[0] == "MODE" || vec[0] == "mode"))
             Mode(fd, cmd);
+        if (vec.size() && (vec[0] == "BOT" || vec[0] == "bot"))
+            Bot(fd, cmd);
     }
     else
     {
@@ -194,13 +197,10 @@ void Server::receiveData(int fd)
                         tmp->removeOperator(client->getNickname());
                     client->removeclientChannel(chname);
                     client->removeFromMap(chname);
-                    tmp->assignNextOp(client);
+                    tmp->assignNextOp();
                     tmp->remove_client(client);
                     if (client->getChannelsSize() == 0)
-                    {
                         client->setChStatus(false);
-                        client->emptyChannel();
-                    }
                     std::string users = tmp->getClients();
                     ch_broadcast(client->getNickname(), fd, chname, "has left your channel (Server Disconnect)");
                     tmp->sendUserList(users);
@@ -211,7 +211,6 @@ void Server::receiveData(int fd)
                     continue ;
             }
         }
-        // sendMsg(fd, RPL_QUIT(client->getNickname(), "Left"));
         ClearClients(fd, 0);
         close(fd);
     } 
@@ -233,7 +232,6 @@ void Server::ClearClients(int fd, int flag)
 {
     if (flag)
     {
-        //TODO : clear everything;
         std::vector<Client*>::iterator it = this->clients.begin();
         while (it != clients.end())
         {
@@ -260,6 +258,7 @@ void Server::ClearClients(int fd, int flag)
             break;
         }
     }
+    close(fd);
 }
 
 void Server::closeConnections() 
